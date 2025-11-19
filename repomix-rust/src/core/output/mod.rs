@@ -68,8 +68,9 @@ where
 }
 
 fn format_xml(output: &mut String, files: &HashMap<PathBuf, String>, config: &RepomixConfig) {
+    output.push_str("<files>\n");
     for (path, content) in files {
-        output.push_str(&format!("<file name=\"{}\">\n", path.display()));
+        output.push_str(&format!("<file path=\"{}\">\n", path.display()));
         if config.output.show_line_numbers {
             for (i, line) in content.lines().enumerate() {
                 output.push_str(&format!("{:4}: {}\n", i + 1, line));
@@ -82,13 +83,14 @@ fn format_xml(output: &mut String, files: &HashMap<PathBuf, String>, config: &Re
         }
         output.push_str("</file>\n");
     }
+    output.push_str("</files>\n");
 }
 
 fn format_markdown(output: &mut String, files: &HashMap<PathBuf, String>, config: &RepomixConfig) {
+    output.push_str("# Files\n\n");
     for (path, content) in files {
-        output.push_str(&format!("# {}\n\n", path.display()));
+        output.push_str(&format!("## File: {}\n\n", path.display()));
         
-        // Determine language for code block
         let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
         
         output.push_str(&format!("```{}\n", ext));
@@ -109,7 +111,7 @@ fn format_markdown(output: &mut String, files: &HashMap<PathBuf, String>, config
 fn format_plain(output: &mut String, files: &HashMap<PathBuf, String>, config: &RepomixConfig) {
     for (path, content) in files {
         output.push_str(&format!("File: {}\n", path.display()));
-        output.push_str("------------------------------------------------\n");
+        output.push_str("================================================================\n");
         if config.output.show_line_numbers {
             for (i, line) in content.lines().enumerate() {
                 output.push_str(&format!("{:4}: {}\n", i + 1, line));

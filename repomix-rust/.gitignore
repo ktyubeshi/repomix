@@ -1,1 +1,8 @@
 /target
+
+# Test output files
+output*.*
+*_output.*
+repomix-output.*
+dummy_secret.txt
+mcp_test.jsonl
