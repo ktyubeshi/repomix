@@ -4,11 +4,19 @@ use std::collections::HashMap;
 use crate::config::RepomixConfig;
 use crate::core::{file, output, metrics, security, compress, remote};
 
+pub struct FileStats {
+    pub path: PathBuf,
+    pub token_count: usize,
+    pub char_count: usize,
+}
+
 pub struct PackResult {
     pub output: String,
     pub token_count: usize,
     pub total_files: usize,
     pub total_chars: usize,
+    pub top_files: Vec<FileStats>,
+    pub has_secrets: bool,
 }
 
 pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
@@ -79,7 +87,23 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     // Generate output
     let output_result = output::format(config, &files)?;
 
-    // Count tokens
+    // Count tokens per file for statistics
+    let mut file_stats: Vec<FileStats> = Vec::new();
+    for (path, content) in &files {
+        if let Ok(tokens) = metrics::count_tokens(content, &config.token_count.encoding) {
+            file_stats.push(FileStats {
+                path: path.clone(),
+                token_count: tokens,
+                char_count: content.len(),
+            });
+        }
+    }
+    
+    // Sort by token count and take top 5
+    file_stats.sort_by(|a, b| b.token_count.cmp(&a.token_count));
+    let top_files: Vec<FileStats> = file_stats.into_iter().take(5).collect();
+
+    // Count total tokens
     let token_count = metrics::count_tokens(&output_result.content, &config.token_count.encoding)?;
     tracing::info!("Generated output: {} tokens (encoding: {})", token_count, config.token_count.encoding);
 
@@ -88,5 +112,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         token_count,
         total_files: files.len(),
         total_chars,
+        top_files,
+        has_secrets: false, // TODO: track actual security findings
     })
 }

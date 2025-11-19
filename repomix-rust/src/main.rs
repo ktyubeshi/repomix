@@ -44,22 +44,53 @@ async fn main() -> Result<()> {
 
     println!("✔ Packing completed successfully!\n");
 
+    // Display top files
+    if !result.top_files.is_empty() {
+        println!("📈 Top 5 Files by Token Count:");
+        println!("──────────────────────────────");
+        for (i, file_stat) in result.top_files.iter().enumerate() {
+            let percentage = (file_stat.token_count as f64 / result.token_count as f64 * 100.0).round();
+            println!("{}. {} ({} tokens, {} chars, {}%)", 
+                i + 1,
+                file_stat.path.display(),
+                format_number(file_stat.token_count),
+                format_number(file_stat.char_count),
+                percentage
+            );
+        }
+        println!();
+    }
+
+    // Security check
+    println!("🔎 Security Check:");
+    println!("──────────────────");
+    if result.has_secrets {
+        println!("⚠ Suspicious files detected.");
+    } else {
+        println!("✔ No suspicious files detected.");
+    }
+    println!("\n");
+
     // Print summary
     println!("📊 Pack Summary:");
     println!("────────────────────");
     println!("  Total Files: {} files", result.total_files);
-    println!(" Total Tokens: {} tokens", result.token_count);
-    println!("  Total Chars: {} chars", result.total_chars);
+    println!(" Total Tokens: {} tokens", format_number(result.token_count));
+    println!("  Total Chars: {} chars", format_number(result.total_chars));
     
     // Handle output
     if args.stdout || config.output.file_path.is_none() {
-        println!("       Output: stdout\n");
+        println!("       Output: stdout");
+        println!("     Security: {}", if result.has_secrets { "⚠ Suspicious files detected" } else { "✔ No suspicious files detected" });
+        println!();
         println!("{}", result.output);
     } else {
         let output_path = config.output.file_path.as_ref().unwrap();
         std::fs::write(output_path, &result.output)
             .with_context(|| format!("Failed to write output to {:?}", output_path))?;
-        println!("       Output: {}\n", output_path.display());
+        println!("       Output: {}", output_path.display());
+        println!("     Security: {}", if result.has_secrets { "⚠ Suspicious files detected" } else { "✔ No suspicious files detected" });
+        println!();
     }
 
     // Clipboard
@@ -73,4 +104,16 @@ async fn main() -> Result<()> {
     println!("Your repository has been successfully packed.\n");
 
     Ok(())
+}
+
+fn format_number(n: usize) -> String {
+    let s = n.to_string();
+    let mut result = String::new();
+    for (i, c) in s.chars().rev().enumerate() {
+        if i > 0 && i % 3 == 0 {
+            result.push(',');
+        }
+        result.push(c);
+    }
+    result.chars().rev().collect()
 }
