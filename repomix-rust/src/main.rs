@@ -38,28 +38,39 @@ async fn main() -> Result<()> {
         .merge_with_cli(&args);
 
     // Run packing
+    println!("\n📦 Repomix v{}\n", env!("CARGO_PKG_VERSION"));
+    
     let result = core::pack::pack(&config, &args.directories)?;
 
+    println!("✔ Packing completed successfully!\n");
+
+    // Print summary
+    println!("📊 Pack Summary:");
+    println!("────────────────────");
+    println!("  Total Files: {} files", result.total_files);
+    println!(" Total Tokens: {} tokens", result.token_count);
+    println!("  Total Chars: {} chars", result.total_chars);
+    
     // Handle output
     if args.stdout || config.output.file_path.is_none() {
-        // Write to stdout
-        // We use println! here, but we might want to avoid mixing logs and output.
-        // Logs are on stderr by default with tracing-subscriber fmt, so this is fine.
+        println!("       Output: stdout\n");
         println!("{}", result.output);
     } else {
-        // Write to file
         let output_path = config.output.file_path.as_ref().unwrap();
         std::fs::write(output_path, &result.output)
             .with_context(|| format!("Failed to write output to {:?}", output_path))?;
-        tracing::info!("Output written to {:?}", output_path);
+        println!("       Output: {}\n", output_path.display());
     }
 
     // Clipboard
     if args.copy || config.output.copy_to_clipboard {
         let mut clipboard = arboard::Clipboard::new().context("Failed to initialize clipboard")?;
         clipboard.set_text(&result.output).context("Failed to copy to clipboard")?;
-        tracing::info!("Output copied to clipboard");
+        println!("📋 Output copied to clipboard");
     }
+
+    println!("🎉 All Done!");
+    println!("Your repository has been successfully packed.\n");
 
     Ok(())
 }
