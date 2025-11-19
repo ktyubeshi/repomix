@@ -57,14 +57,53 @@ fn generate_directory_structure<'a, I>(paths: I) -> String
 where
     I: Iterator<Item = &'a PathBuf>,
 {
-    // Simple implementation for now: just list files
-    // TODO: Implement tree-like structure
-    let mut lines = Vec::new();
+    use std::collections::BTreeMap;
+    
+    // Build tree structure
+    let mut tree: BTreeMap<String, BTreeMap<String, ()>> = BTreeMap::new();
+    
     for path in paths {
-        lines.push(format!("- {}", path.display()));
+        let path_str = path.to_string_lossy();
+        let parts: Vec<&str> = path_str.split('/').collect();
+        
+        if parts.is_empty() {
+            continue;
+        }
+        
+        // Add to tree
+        if parts.len() == 1 {
+            tree.entry(parts[0].to_string()).or_default();
+        } else if parts.len() > 1 {
+            let dir = parts[0].to_string();
+            let rest = parts[1..].join("/");
+            tree.entry(dir).or_default().insert(rest, ());
+        }
     }
-    lines.sort();
-    lines.join("\n")
+    
+    // Generate tree string
+    let mut result = String::new();
+    let dirs: Vec<_> = tree.keys().collect();
+    
+    for (i, dir) in dirs.iter().enumerate() {
+        let is_last = i == dirs.len() - 1;
+        let prefix = if is_last { "└── " } else { "├── " };
+        
+        result.push_str(&format!("{}{}\n", prefix, dir));
+        
+        // Add subdirectories/files
+        if let Some(children) = tree.get(*dir) {
+            let child_prefix = if is_last { "    " } else { "│   " };
+            let child_list: Vec<_> = children.keys().collect();
+            
+            for (j, child) in child_list.iter().enumerate() {
+                let is_last_child = j == child_list.len() - 1;
+                let child_marker = if is_last_child { "└── " } else { "├── " };
+                result.push_str(&format!("{}{}{}\n", child_prefix, child_marker, child));
+            }
+        }
+    }
+    
+    result
 }
 
 fn format_xml(output: &mut String, files: &HashMap<PathBuf, String>, config: &RepomixConfig) {
