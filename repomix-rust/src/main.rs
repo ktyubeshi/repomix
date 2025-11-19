@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
     tracing::debug!("Repomix started with args: {:?}", args);
 
     // Load configuration
-    let config = config::RepomixConfig::load_from_file(None)
+    let config = config::RepomixConfig::load_from_file(args.config.clone())
         .context("Failed to load configuration")?
         .merge_with_cli(&args);
 
@@ -35,8 +35,35 @@ async fn main() -> Result<()> {
         match core::file::read_file(&path, &config) {
             Ok(Some(content)) => {
                 tracing::debug!("Read file: {:?} (len: {})", path, content.len());
-                total_chars += content.len();
-                files.insert(path, content);
+                
+                // Security check
+                if config.security.enable_security_check {
+                    if let Ok(Some(result)) = core::security::scan_content(&path, &content) {
+                        for secret in result.secrets {
+                            tracing::warn!("Potential secret found in {:?}: {}", path, secret);
+                        }
+                    }
+                }
+
+                // Compression
+                let final_content = if config.output.compress {
+                    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+                    match core::compress::compress_content(&content, ext) {
+                        Ok(c) => {
+                            tracing::debug!("Compressed {:?} ({} -> {} chars)", path, content.len(), c.len());
+                            c
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to compress {:?}: {}", path, e);
+                            content
+                        }
+                    }
+                } else {
+                    content
+                };
+
+                total_chars += final_content.len();
+                files.insert(path, final_content);
             }
             Ok(None) => {}
             Err(e) => {

@@ -36,6 +36,16 @@ tiktoken-rs = "0.5" # Token counting
 indicatif = "0.17" # Progress bar
 console = "0.15" # Terminal output control
 arboard = "3.3" # Clipboard operations
+regex = "1.10"
+lazy_static = "1.4"
+
+# Tree-sitter
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"
+tree-sitter-typescript = "0.20"
+tree-sitter-javascript = "0.20"
+tree-sitter-python = "0.20"
+tree-sitter-go = "0.20"
 
 [dev-dependencies]
 tempfile = "3.10"

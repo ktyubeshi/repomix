@@ -14,6 +14,10 @@ pub struct Cli {
     #[arg(short, long)]
     pub output: Option<PathBuf>,
 
+    /// Custom configuration file path
+    #[arg(short, long)]
+    pub config: Option<PathBuf>,
+
     /// Output to stdout instead of writing to a file
     #[arg(long, conflicts_with = "output")]
     pub stdout: bool,

@@ -24,6 +24,22 @@ pub fn format(config: &RepomixConfig, files: &HashMap<PathBuf, String>) -> Resul
         output.push('\n');
     }
 
+    // Add git info if enabled
+    // Note: We need to pass the root directory to get_git_log/diff. 
+    // For now, assuming current directory or we need to pass it in config.
+    // Let's assume the user runs repomix from the root of the repo for now.
+    let git_config = &config.output.git;
+    if git_config.include_diffs {
+            // TODO: We need a way to know the root dir. For now using "."
+            if let Ok(diff) = crate::core::git::get_git_diff(std::path::Path::new(".")) {
+                if !diff.is_empty() {
+                    output.push_str("\nGit Diff:\n");
+                    output.push_str(&diff);
+                    output.push('\n');
+                }
+            }
+    }
+
     // Add files
     if config.output.files {
         let style = config.output.style.as_deref().unwrap_or("xml");
