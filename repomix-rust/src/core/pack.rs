@@ -85,19 +85,40 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     tracing::info!("Found {} files, total characters: {}", files.len(), total_chars);
 
     // Generate output
+    tracing::info!("Generating output file...");
     let output_result = output::format(config, &files)?;
+    tracing::info!("Output generation completed ({} bytes)", output_result.content.len());
 
-    // Count tokens per file for statistics
-    let mut file_stats: Vec<FileStats> = Vec::new();
-    for (path, content) in &files {
-        if let Ok(tokens) = metrics::count_tokens(content, &config.token_count.encoding) {
-            file_stats.push(FileStats {
+    // Count tokens per file for statistics (parallel processing)
+    use rayon::prelude::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    
+    let total_files = files.len();
+    tracing::info!("Counting tokens for {} files (parallel)...", total_files);
+    
+    let enc = config.token_count.encoding.clone();
+    let processed = AtomicUsize::new(0);
+    
+    let mut file_stats: Vec<FileStats> = files
+        .par_iter()
+        .map(|(path, content)| {
+            let tokens = metrics::count_tokens(content, &enc).unwrap_or(0);
+            
+            // Progress tracking (thread-safe)
+            let count = processed.fetch_add(1, Ordering::Relaxed) + 1;
+            if count % 100 == 0 {
+                tracing::info!("Progress: {}/{} files processed", count, total_files);
+            }
+            
+            FileStats {
                 path: path.clone(),
                 token_count: tokens,
                 char_count: content.len(),
-            });
-        }
-    }
+            }
+        })
+        .collect();
+    
+    tracing::info!("Token counting completed for {}/{} files", file_stats.len(), total_files);
     
     // Sort by token count and take top 5
     file_stats.sort_by(|a, b| b.token_count.cmp(&a.token_count));
