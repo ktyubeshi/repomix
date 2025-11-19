@@ -45,6 +45,10 @@ pub struct Cli {
     /// Disable all output to stdout
     #[arg(long, conflicts_with = "verbose")]
     pub quiet: bool,
+
+    /// Run as MCP server
+    #[arg(long)]
+    pub server: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]

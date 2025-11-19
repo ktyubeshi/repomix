@@ -1,0 +1,3 @@
+{"jsonrpc": "2.0", "method": "initialize", "params": {}, "id": 1}
+{"jsonrpc": "2.0", "method": "tools/list", "params": {}, "id": 2}
+{"jsonrpc": "2.0", "method": "tools/call", "params": {"name": "repomix_pack", "arguments": {"directory": "."}}, "id": 3}
