@@ -120,13 +120,33 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     
     tracing::info!("Token counting completed for {}/{} files", file_stats.len(), total_files);
     
+    // Calculate total tokens efficiently (before sorting/filtering)
+    // Sum of individual file tokens (already calculated)
+    let files_token_count: usize = file_stats.iter().map(|f| f.token_count).sum();
+    
     // Sort by token count and take top 5
     file_stats.sort_by(|a, b| b.token_count.cmp(&a.token_count));
     let top_files: Vec<FileStats> = file_stats.into_iter().take(5).collect();
 
-    // Count total tokens
-    let token_count = metrics::count_tokens(&output_result.content, &config.token_count.encoding)?;
-    tracing::info!("Generated output: {} tokens (encoding: {})", token_count, config.token_count.encoding);
+    // Calculate tokens for metadata (header, directory structure, etc.)
+    // This is much smaller than the entire output, so it's fast to calculate
+    let metadata_size = output_result.content.len() - total_chars;
+    let metadata_tokens = if metadata_size > 0 {
+        // Estimate: metadata is typically XML tags, headers, etc.
+        // Use a rough estimate of 1 token per 3 characters for metadata
+        metadata_size / 3
+    } else {
+        0
+    };
+    
+    let token_count = files_token_count + metadata_tokens;
+    tracing::info!(
+        "Generated output: {} tokens (encoding: {}, {} from files + {} from metadata)", 
+        token_count, 
+        config.token_count.encoding,
+        files_token_count,
+        metadata_tokens
+    );
 
     Ok(PackResult {
         output: output_result.content,
