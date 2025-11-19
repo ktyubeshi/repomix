@@ -2,6 +2,11 @@
 name = "repomix"
 version = "0.1.0"
 edition = "2021"
+
+[[bin]]
+name = "repomix-rs"
+path = "src/main.rs"
+
 authors = ["Kazuki Yamada <koukun0120@gmail.com>"]
 description = "Pack your codebase into AI-friendly formats"
 
