@@ -266,6 +266,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "content_inspector"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7bda66e858c683005a53a9a60c69a4aca7eeaa45d124526e389f7aec8e62f38"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1201,10 +1210,12 @@ dependencies = [
  "assert_cmd",
  "clap",
  "console",
+ "content_inspector",
  "dirs",
  "dunce",
  "futures",
  "glob",
+ "globset",
  "ignore",
  "indicatif",
  "json5",

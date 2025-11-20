@@ -1,8 +1,8 @@
-use anyhow::Result;
-use std::path::PathBuf;
-use std::collections::HashMap;
 use crate::config::RepomixConfig;
-use crate::core::{file, output, metrics, security, compress, remote};
+use crate::core::{compress, file, metrics, output, remote, security};
+use anyhow::Result;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 pub struct FileStats {
     pub path: PathBuf,
@@ -36,7 +36,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     }
 
     // Collect files
-    let walker = file::FileWalker::new(config.clone());
+    let walker = file::FileWalker::new(config.clone())?;
     let mut files = HashMap::new();
     let mut total_chars = 0;
 
@@ -44,7 +44,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         match file::read_file(&path, config) {
             Ok(Some(content)) => {
                 tracing::debug!("Read file: {:?} (len: {})", path, content.len());
-                
+
                 // Security check
                 if config.security.enable_security_check {
                     if let Ok(Some(result)) = security::scan_content(&path, &content) {
@@ -59,7 +59,12 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
                     match compress::compress_content(&content, ext) {
                         Ok(c) => {
-                            tracing::debug!("Compressed {:?} ({} -> {} chars)", path, content.len(), c.len());
+                            tracing::debug!(
+                                "Compressed {:?} ({} -> {} chars)",
+                                path,
+                                content.len(),
+                                c.len()
+                            );
                             c
                         }
                         Err(e) => {
@@ -82,34 +87,41 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         Ok(())
     })?;
 
-    tracing::info!("Found {} files, total characters: {}", files.len(), total_chars);
+    tracing::info!(
+        "Found {} files, total characters: {}",
+        files.len(),
+        total_chars
+    );
 
     // Generate output
     tracing::info!("Generating output file...");
     let output_result = output::format(config, &files)?;
-    tracing::info!("Output generation completed ({} bytes)", output_result.content.len());
+    tracing::info!(
+        "Output generation completed ({} bytes)",
+        output_result.content.len()
+    );
 
     // Count tokens per file for statistics (parallel processing)
     use rayon::prelude::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
-    
+
     let total_files = files.len();
     tracing::info!("Counting tokens for {} files (parallel)...", total_files);
-    
+
     let enc = config.token_count.encoding.clone();
     let processed = AtomicUsize::new(0);
-    
+
     let mut file_stats: Vec<FileStats> = files
         .par_iter()
         .map(|(path, content)| {
             let tokens = metrics::count_tokens(content, &enc).unwrap_or(0);
-            
+
             // Progress tracking (thread-safe)
             let count = processed.fetch_add(1, Ordering::Relaxed) + 1;
             if count % 100 == 0 {
                 tracing::info!("Progress: {}/{} files processed", count, total_files);
             }
-            
+
             FileStats {
                 path: path.clone(),
                 token_count: tokens,
@@ -117,13 +129,17 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
             }
         })
         .collect();
-    
-    tracing::info!("Token counting completed for {}/{} files", file_stats.len(), total_files);
-    
+
+    tracing::info!(
+        "Token counting completed for {}/{} files",
+        file_stats.len(),
+        total_files
+    );
+
     // Calculate total tokens efficiently (before sorting/filtering)
     // Sum of individual file tokens (already calculated)
     let files_token_count: usize = file_stats.iter().map(|f| f.token_count).sum();
-    
+
     // Sort by token count and take top 5
     file_stats.sort_by(|a, b| b.token_count.cmp(&a.token_count));
     let top_files: Vec<FileStats> = file_stats.into_iter().take(5).collect();
@@ -138,11 +154,11 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     } else {
         0
     };
-    
+
     let token_count = files_token_count + metadata_tokens;
     tracing::info!(
-        "Generated output: {} tokens (encoding: {}, {} from files + {} from metadata)", 
-        token_count, 
+        "Generated output: {} tokens (encoding: {}, {} from files + {} from metadata)",
+        token_count,
         config.token_count.encoding,
         files_token_count,
         metadata_tokens

@@ -10,6 +10,14 @@ pub struct Cli {
     #[arg(default_value = ".")]
     pub directories: Vec<PathBuf>,
 
+    /// Additional include glob patterns
+    #[arg(long = "include", value_name = "PATTERN")]
+    pub include: Vec<String>,
+
+    /// Additional ignore glob patterns (applied before ignore files)
+    #[arg(short = 'i', long = "ignore", value_name = "PATTERN")]
+    pub ignore: Vec<String>,
+
     /// Specify the output file name
     #[arg(short, long)]
     pub output: Option<PathBuf>,
@@ -37,6 +45,22 @@ pub struct Cli {
     /// Copy generated output to system clipboard
     #[arg(long)]
     pub copy: bool,
+
+    /// Disable reading of gitignore files
+    #[arg(long = "no-gitignore")]
+    pub no_gitignore: bool,
+
+    /// Disable reading of .ignore files
+    #[arg(long = "no-dot-ignore")]
+    pub no_dot_ignore: bool,
+
+    /// Disable built-in default ignore patterns
+    #[arg(long = "no-default-patterns")]
+    pub no_default_patterns: bool,
+
+    /// Add paths from stdin (one absolute/relative path per line)
+    #[arg(long)]
+    pub stdin: bool,
 
     /// Enable verbose logging
     #[arg(long, conflicts_with = "quiet")]

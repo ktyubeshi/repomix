@@ -32,6 +32,7 @@ thiserror = "1.0"
 # File System & Glob
 ignore = "0.4" # .gitignore aware file walker
 glob = "0.3"
+globset = "0.4"
 path-clean = "1.0"
 dunce = "1.0" # Windows path normalization
 
@@ -43,6 +44,7 @@ console = "0.15" # Terminal output control
 arboard = "3.3" # Clipboard operations
 regex = "1.10"
 lazy_static = "1.4"
+content_inspector = "0.2"
 
 # Tree-sitter
 tree-sitter = "0.20"
