@@ -1,6 +1,6 @@
 use anyhow::Result;
-use regex::Regex;
 use lazy_static::lazy_static;
+use regex::Regex;
 
 lazy_static! {
     static ref SECRET_PATTERNS: Vec<(&'static str, Regex)> = vec![

@@ -46,7 +46,7 @@ pub fn start_server() -> Result<()> {
 
         let response = handle_request(request);
         let response_str = serde_json::to_string(&response)?;
-        
+
         writeln!(stdout, "{}", response_str)?;
         stdout.flush()?;
     }
@@ -127,11 +127,14 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
         data: None,
     })?;
 
-    let name = params.get("name").and_then(|v| v.as_str()).ok_or(JsonRpcError {
-        code: -32602,
-        message: "Missing tool name".to_string(),
-        data: None,
-    })?;
+    let name = params
+        .get("name")
+        .and_then(|v| v.as_str())
+        .ok_or(JsonRpcError {
+            code: -32602,
+            message: "Missing tool name".to_string(),
+            data: None,
+        })?;
 
     if name != "repomix_pack" {
         return Err(JsonRpcError {
@@ -147,23 +150,26 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
         data: None,
     })?;
 
-    let directory = args.get("directory").and_then(|v| v.as_str()).ok_or(JsonRpcError {
-        code: -32602,
-        message: "Missing directory argument".to_string(),
-        data: None,
-    })?;
+    let directory = args
+        .get("directory")
+        .and_then(|v| v.as_str())
+        .ok_or(JsonRpcError {
+            code: -32602,
+            message: "Missing directory argument".to_string(),
+            data: None,
+        })?;
 
     // Load default config
     // TODO: Allow options to override config
     let config = crate::config::RepomixConfig::default();
-    
+
     let path = std::path::PathBuf::from(directory);
     let result = crate::core::pack::pack(&config, &[path]).map_err(|e| JsonRpcError {
         code: -32603,
         message: format!("Packing failed: {}", e),
         data: None,
     })?;
-    
+
     Ok(json!({
         "content": [
             {

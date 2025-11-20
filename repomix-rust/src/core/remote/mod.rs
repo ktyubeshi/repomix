@@ -4,8 +4,12 @@ use tempfile::TempDir;
 
 pub fn clone_repo(url: &str) -> Result<TempDir> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory")?;
-    
-    tracing::info!("Cloning {} to temporary directory {:?}", url, temp_dir.path());
+
+    tracing::info!(
+        "Cloning {} to temporary directory {:?}",
+        url,
+        temp_dir.path()
+    );
 
     let output = Command::new("git")
         .arg("clone")
