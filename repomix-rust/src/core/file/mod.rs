@@ -313,6 +313,11 @@ pub fn read_file(path: &Path, config: &RepomixConfig) -> Result<Option<String>> 
         return Ok(None);
     }
 
+    if metadata.len() == 0 {
+        tracing::debug!("Skipping empty file {:?}", path);
+        return Ok(None);
+    }
+
     if is_probably_binary(path) {
         tracing::debug!("Skipping binary file {:?} (extension match)", path);
         return Ok(None);
