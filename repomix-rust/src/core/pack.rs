@@ -38,11 +38,14 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
 
     // Collect files
     let walker = file::FileWalker::new(config.clone())?;
-    let mut files = HashMap::new();
-    let mut suspicious_files = Vec::new();
-    let mut total_chars = 0;
+    let files = std::sync::Mutex::new(HashMap::new());
+    let suspicious_files = std::sync::Mutex::new(Vec::new());
+    let total_chars = std::sync::atomic::AtomicUsize::new(0);
+    let file_stats = std::sync::Mutex::new(Vec::new());
+    let enc = config.token_count.encoding.clone();
 
-    walker.walk(&target_paths, |absolute_path, relative_path| {
+    // Use parallel walker for better performance (read -> check -> compress -> count tokens)
+    walker.walk_parallel(&target_paths, |absolute_path, relative_path| {
         match file::read_file(&absolute_path, config) {
             Ok(Some(content)) => {
                 tracing::debug!("Read file: {:?} (len: {})", absolute_path, content.len());
@@ -53,7 +56,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                         for secret in result.secrets {
                             tracing::warn!("Potential secret found in {:?}: {}", absolute_path, secret);
                         }
-                        suspicious_files.push(relative_path);
+                        suspicious_files.lock().unwrap().push(relative_path);
                         return Ok(());
                     }
                 }
@@ -80,8 +83,24 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                     content
                 };
 
-                total_chars += final_content.len();
-                files.insert(relative_path, final_content);
+                // Count tokens immediately (parallelized)
+                let token_count = metrics::count_tokens(&final_content, &enc).unwrap_or(0);
+                
+                total_chars.fetch_add(final_content.len(), std::sync::atomic::Ordering::Relaxed);
+                
+                {
+                    let mut stats = file_stats.lock().unwrap();
+                    stats.push(FileStats {
+                        path: relative_path.clone(),
+                        token_count,
+                        char_count: final_content.len(),
+                    });
+                }
+
+                {
+                    let mut map = files.lock().unwrap();
+                    map.insert(relative_path, final_content);
+                }
             }
             Err(e) => {
                 tracing::warn!("Failed to read file {:?}: {}", absolute_path, e);
@@ -90,6 +109,12 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         }
         Ok(())
     })?;
+
+    // Extract results from synchronisation primitives
+    let files = files.into_inner().unwrap();
+    let suspicious_files = suspicious_files.into_inner().unwrap();
+    let total_chars = total_chars.into_inner();
+    let mut file_stats = file_stats.into_inner().unwrap();
 
     tracing::info!(
         "Found {} files, total characters: {}",
@@ -105,43 +130,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         output_result.content.len()
     );
 
-    // Count tokens per file for statistics (parallel processing)
-    use rayon::prelude::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    let total_files = files.len();
-    tracing::info!("Counting tokens for {} files (parallel)...", total_files);
-
-    let enc = config.token_count.encoding.clone();
-    let processed = AtomicUsize::new(0);
-
-    let mut file_stats: Vec<FileStats> = files
-        .par_iter()
-        .map(|(path, content)| {
-            let tokens = metrics::count_tokens(content, &enc).unwrap_or(0);
-
-            // Progress tracking (thread-safe)
-            let count = processed.fetch_add(1, Ordering::Relaxed) + 1;
-            if count % 100 == 0 {
-                tracing::info!("Progress: {}/{} files processed", count, total_files);
-            }
-
-            FileStats {
-                path: path.clone(),
-                token_count: tokens,
-                char_count: content.len(),
-            }
-        })
-        .collect();
-
-    tracing::info!(
-        "Token counting completed for {}/{} files",
-        file_stats.len(),
-        total_files
-    );
-
-    // Calculate total tokens efficiently (before sorting/filtering)
-    // Sum of individual file tokens (already calculated)
+    // Calculate total tokens efficiently
     let files_token_count: usize = file_stats.iter().map(|f| f.token_count).sum();
 
     // Sort by token count and take top 5

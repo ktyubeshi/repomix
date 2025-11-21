@@ -92,6 +92,30 @@ impl FileWalker {
         Ok(())
     }
 
+    pub fn walk_parallel<F>(&self, paths: &[PathBuf], callback: F) -> Result<()>
+    where
+        F: Fn(PathBuf, PathBuf) -> Result<()> + Send + Sync,
+    {
+        if paths.is_empty() {
+            bail!("No target directories supplied");
+        }
+
+        for raw_path in paths {
+            let root = dunce::canonicalize(raw_path)
+                .with_context(|| format!("Failed to resolve path {:?}", raw_path))?;
+            let metadata = fs::metadata(&root)
+                .with_context(|| format!("Failed to read metadata for {:?}", root))?;
+
+            if !metadata.is_dir() {
+                bail!("Target path is not a directory: {:?}", root);
+            }
+
+            self.walk_root_parallel(&root, &callback)?;
+        }
+
+        Ok(())
+    }
+
     fn walk_root<F>(&self, root: &Path, callback: &mut F) -> Result<()>
     where
         F: FnMut(PathBuf, PathBuf) -> Result<()>,
@@ -131,6 +155,58 @@ impl FileWalker {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    fn walk_root_parallel<F>(&self, root: &Path, callback: &F) -> Result<()>
+    where
+        F: Fn(PathBuf, PathBuf) -> Result<()> + Send + Sync,
+    {
+        let include_patterns = self.include_patterns_for_root(root);
+        let include_matcher = IncludeMatcher::new(include_patterns)?;
+        let builder = self.build_walk_builder(root);
+        let walker = builder.build_parallel();
+
+        // Shared state for the parallel walker
+        // We use Arc to share read-only state, but include_matcher and self need to be Sync
+        // GlobSet (in IncludeMatcher and self.custom_ignore) is Send+Sync.
+        
+        walker.run(|| {
+            Box::new(|result| {
+                match result {
+                    Ok(entry) => {
+                        if !entry.file_type().map_or(false, |ft| ft.is_file()) {
+                            return ignore::WalkState::Continue;
+                        }
+
+                        let path = entry.path();
+                        let relative = relative_path_str(path, root);
+
+                        if relative.is_empty() {
+                            return ignore::WalkState::Continue;
+                        }
+
+                        if !include_matcher.matches(&relative) {
+                            return ignore::WalkState::Continue;
+                        }
+
+                        if self.should_skip(&relative, path) {
+                            tracing::trace!("Skipping {:?} (matched ignore)", path);
+                            return ignore::WalkState::Continue;
+                        }
+
+                        if let Err(e) = callback(path.to_path_buf(), PathBuf::from(relative)) {
+                            tracing::error!("Error processing file {:?}: {}", path, e);
+                        }
+                    }
+                    Err(err) => {
+                        tracing::warn!("Error walking path: {}", err);
+                    }
+                }
+                ignore::WalkState::Continue
+            })
+        });
 
         Ok(())
     }
