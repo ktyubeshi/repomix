@@ -102,7 +102,7 @@ pub struct OutputConfig {
 impl Default for OutputConfig {
     fn default() -> Self {
         Self {
-            file_path: None,
+            file_path: Some(PathBuf::from("repomix-output.xml")),
             style: None,
             parsable_style: false,
             compress: false,

@@ -97,7 +97,7 @@ async fn main() -> Result<()> {
     println!("  Total Chars: {} chars", format_number(result.total_chars));
 
     // Handle output
-    if args.stdout || config.output.file_path.is_none() {
+    if args.stdout {
         println!("       Output: stdout");
         println!(
             "     Security: {}",
@@ -109,8 +109,7 @@ async fn main() -> Result<()> {
         );
         println!();
         println!("{}", result.output);
-    } else {
-        let output_path = config.output.file_path.as_ref().unwrap();
+    } else if let Some(output_path) = &config.output.file_path {
         std::fs::write(output_path, &result.output)
             .with_context(|| format!("Failed to write output to {:?}", output_path))?;
         println!("       Output: {}", output_path.display());
@@ -123,6 +122,18 @@ async fn main() -> Result<()> {
             }
         );
         println!();
+    } else {
+        println!("       Output: stdout");
+        println!(
+            "     Security: {}",
+            if result.has_secrets {
+                "⚠ Suspicious files detected"
+            } else {
+                "✔ No suspicious files detected"
+            }
+        );
+        println!();
+        println!("{}", result.output);
     }
 
     // Clipboard
