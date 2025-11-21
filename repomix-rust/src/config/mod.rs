@@ -12,6 +12,8 @@ pub struct RepomixConfig {
     pub cwd: PathBuf,
     #[serde(skip)]
     pub stdin_file_paths: Vec<PathBuf>,
+    #[serde(skip)]
+    pub remote_branch: Option<String>,
     #[serde(default)]
     pub input: InputConfig,
     #[serde(default)]
@@ -31,6 +33,7 @@ impl Default for RepomixConfig {
         Self {
             cwd: current_dir_default(),
             stdin_file_paths: Vec::new(),
+            remote_branch: None,
             input: InputConfig::default(),
             output: OutputConfig::default(),
             include: Vec::new(),
@@ -272,6 +275,69 @@ impl RepomixConfig {
 
         if cli.no_default_patterns {
             self.ignore.use_default_patterns = false;
+        }
+
+        // Output options
+        if cli.remove_comments {
+            self.output.remove_comments = true;
+        }
+        if cli.remove_empty_lines {
+            self.output.remove_empty_lines = true;
+        }
+        if cli.parsable_style {
+            self.output.parsable_style = true;
+        }
+        if cli.no_file_summary {
+            self.output.file_summary = false;
+        }
+        if cli.no_directory_structure {
+            self.output.directory_structure = false;
+        }
+        if cli.no_files {
+            self.output.files = false;
+        }
+        if let Some(header) = &cli.header_text {
+            self.output.header_text = Some(header.clone());
+        }
+        if let Some(instruction) = &cli.instruction_file_path {
+            self.output.instruction_file_path = Some(instruction.clone());
+        }
+        if cli.include_empty_directories {
+            self.output.include_empty_directories = true;
+        }
+        if cli.truncate_base64 {
+            self.output.truncate_base64 = true;
+        }
+        if let Some(len) = cli.top_files_len {
+            self.output.top_files_length = len;
+        }
+
+        // Git options
+        if cli.no_git_sort_by_changes {
+            self.output.git.sort_by_changes = false;
+        }
+        if cli.include_diffs {
+            self.output.git.include_diffs = true;
+        }
+        if cli.include_logs {
+            self.output.git.include_logs = true;
+        }
+        if let Some(count) = cli.include_logs_count {
+            self.output.git.include_logs_count = Some(count);
+        }
+
+        // Security options
+        if cli.no_security_check {
+            self.security.enable_security_check = false;
+        }
+
+        // Token count options
+        if let Some(encoding) = &cli.token_count_encoding {
+            self.token_count.encoding = encoding.clone();
+        }
+
+        if let Some(branch) = &cli.remote_branch {
+            self.remote_branch = Some(branch.clone());
         }
 
         self

@@ -12,7 +12,12 @@ use shared::logger;
 async fn main() -> Result<()> {
     // Initialize logger
     // Parse CLI arguments
-    let args = Cli::parse();
+    let mut args = Cli::parse();
+
+    // If --remote is provided, treat it as a target directory/URL
+    if let Some(remote_url) = &args.remote {
+        args.directories.push(std::path::PathBuf::from(remote_url));
+    }
 
     if args.server {
         if let Err(e) = repomix::mcp::start_server() {

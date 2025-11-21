@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::process::Command;
 use tempfile::TempDir;
 
-pub fn clone_repo(url: &str) -> Result<TempDir> {
+pub fn clone_repo(url: &str, branch: Option<&str>) -> Result<TempDir> {
     let temp_dir = TempDir::new().context("Failed to create temporary directory")?;
 
     tracing::info!(
@@ -11,9 +11,14 @@ pub fn clone_repo(url: &str) -> Result<TempDir> {
         temp_dir.path()
     );
 
-    let output = Command::new("git")
-        .arg("clone")
-        .arg("--depth=1")
+    let mut command = Command::new("git");
+    command.arg("clone").arg("--depth=1");
+
+    if let Some(b) = branch {
+        command.arg("--branch").arg(b);
+    }
+
+    let output = command
         .arg(url)
         .arg(".")
         .current_dir(temp_dir.path())

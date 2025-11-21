@@ -27,7 +27,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     for path_buf in paths {
         let path_str = path_buf.to_string_lossy();
         if remote::is_remote_url(&path_str) {
-            let temp_dir = remote::clone_repo(&path_str)?;
+            let temp_dir = remote::clone_repo(&path_str, config.remote_branch.as_deref())?;
             target_paths.push(temp_dir.path().to_path_buf());
             temp_dirs.push(temp_dir);
         } else {
