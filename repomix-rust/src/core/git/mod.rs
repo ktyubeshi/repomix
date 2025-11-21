@@ -7,12 +7,15 @@ pub struct GitCommit {
     pub files: Vec<String>,
 }
 
-pub fn get_git_diff(dir: &std::path::Path) -> Result<String> {
-    let output = Command::new("git")
-        .arg("diff")
-        .current_dir(dir)
-        .output()
-        .context("Failed to execute git diff")?;
+pub fn get_git_diff(dir: &std::path::Path, staged: bool) -> Result<String> {
+    let mut command = Command::new("git");
+    command.arg("diff").current_dir(dir);
+
+    if staged {
+        command.arg("--staged");
+    }
+
+    let output = command.output().context("Failed to execute git diff")?;
 
     if !output.status.success() {
         return Err(anyhow::anyhow!("git diff failed"));

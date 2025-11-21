@@ -113,7 +113,7 @@ fn format_xml_full(
     // Git Diffs
     if config.output.git.include_diffs {
         output.push_str("<git_diffs>\n");
-        if let Ok(diff) = crate::core::git::get_git_diff(std::path::Path::new(".")) {
+        if let Ok(diff) = crate::core::git::get_git_diff(std::path::Path::new("."), false) {
             output.push_str("<git_diff_work_tree>\n");
             if !diff.is_empty() {
                 output.push_str(&diff);
@@ -121,13 +121,19 @@ fn format_xml_full(
                     output.push('\n');
                 }
             }
-            output.push_str("\n</git_diff_work_tree>\n");
+            output.push_str("</git_diff_work_tree>\n");
         }
         
-        // TODO: Separate worktree and staged diffs properly. 
-        // Current get_git_diff likely combines them or gets one.
-        // For now, just putting placeholder for staged if we can't separate easily yet.
-        output.push_str("<git_diff_staged>\n\n</git_diff_staged>\n");
+        if let Ok(diff) = crate::core::git::get_git_diff(std::path::Path::new("."), true) {
+            output.push_str("<git_diff_staged>\n");
+            if !diff.is_empty() {
+                output.push_str(&diff);
+                if !diff.ends_with('\n') {
+                    output.push('\n');
+                }
+            }
+            output.push_str("</git_diff_staged>\n");
+        }
         output.push_str("</git_diffs>\n\n");
     }
 
