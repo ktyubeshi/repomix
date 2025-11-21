@@ -41,6 +41,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     let files = std::sync::Mutex::new(HashMap::new());
     let suspicious_files = std::sync::Mutex::new(Vec::new());
     let total_chars = std::sync::atomic::AtomicUsize::new(0);
+    let total_bytes = std::sync::atomic::AtomicUsize::new(0);
     let file_stats = std::sync::Mutex::new(Vec::new());
     let enc = config.token_count.encoding.clone();
 
@@ -85,15 +86,17 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
 
                 // Count tokens immediately (parallelized)
                 let token_count = metrics::count_tokens(&final_content, &enc).unwrap_or(0);
+                let char_count = final_content.chars().count();
                 
-                total_chars.fetch_add(final_content.len(), std::sync::atomic::Ordering::Relaxed);
+                total_chars.fetch_add(char_count, std::sync::atomic::Ordering::Relaxed);
+                total_bytes.fetch_add(final_content.len(), std::sync::atomic::Ordering::Relaxed);
                 
                 {
                     let mut stats = file_stats.lock().unwrap();
                     stats.push(FileStats {
                         path: relative_path.clone(),
                         token_count,
-                        char_count: final_content.len(),
+                        char_count,
                     });
                 }
 
@@ -114,6 +117,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     let files = files.into_inner().unwrap();
     let suspicious_files = suspicious_files.into_inner().unwrap();
     let total_chars = total_chars.into_inner();
+    let total_bytes = total_bytes.into_inner();
     let mut file_stats = file_stats.into_inner().unwrap();
 
     tracing::info!(
@@ -139,7 +143,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
 
     // Calculate tokens for metadata (header, directory structure, etc.)
     // This is much smaller than the entire output, so it's fast to calculate
-    let metadata_size = output_result.content.len() - total_chars;
+    let metadata_size = output_result.content.len().saturating_sub(total_bytes);
     let metadata_tokens = if metadata_size > 0 {
         // Estimate: metadata is typically XML tags, headers, etc.
         // Use a rough estimate of 1 token per 3 characters for metadata
@@ -157,11 +161,13 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         metadata_tokens
     );
 
+    let output_total_chars = output_result.content.chars().count();
+
     Ok(PackResult {
         output: output_result.content,
         token_count,
         total_files: files.len(),
-        total_chars,
+        total_chars: output_total_chars,
         top_files,
         has_secrets: !suspicious_files.is_empty(),
         suspicious_files,
