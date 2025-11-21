@@ -80,7 +80,10 @@ async fn main() -> Result<()> {
     println!("🔎 Security Check:");
     println!("──────────────────");
     if result.has_secrets {
-        println!("⚠ Suspicious files detected.");
+        println!("⚠ {} suspicious file(s) detected and excluded:", result.suspicious_files.len());
+        for file in &result.suspicious_files {
+            println!("  - {}", file.display());
+        }
     } else {
         println!("✔ No suspicious files detected.");
     }
@@ -102,9 +105,9 @@ async fn main() -> Result<()> {
         println!(
             "     Security: {}",
             if result.has_secrets {
-                "⚠ Suspicious files detected"
+                format!("⚠ {} suspicious file(s) detected and excluded", result.suspicious_files.len())
             } else {
-                "✔ No suspicious files detected"
+                "✔ No suspicious files detected".to_string()
             }
         );
         println!();
@@ -116,9 +119,9 @@ async fn main() -> Result<()> {
         println!(
             "     Security: {}",
             if result.has_secrets {
-                "⚠ Suspicious files detected"
+                format!("⚠ {} suspicious file(s) detected and excluded", result.suspicious_files.len())
             } else {
-                "✔ No suspicious files detected"
+                "✔ No suspicious files detected".to_string()
             }
         );
         println!();
@@ -127,9 +130,9 @@ async fn main() -> Result<()> {
         println!(
             "     Security: {}",
             if result.has_secrets {
-                "⚠ Suspicious files detected"
+                format!("⚠ {} suspicious file(s) detected and excluded", result.suspicious_files.len())
             } else {
-                "✔ No suspicious files detected"
+                "✔ No suspicious files detected".to_string()
             }
         );
         println!();

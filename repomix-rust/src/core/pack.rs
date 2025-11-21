@@ -17,6 +17,7 @@ pub struct PackResult {
     pub total_chars: usize,
     pub top_files: Vec<FileStats>,
     pub has_secrets: bool,
+    pub suspicious_files: Vec<PathBuf>,
 }
 
 pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
@@ -38,6 +39,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     // Collect files
     let walker = file::FileWalker::new(config.clone())?;
     let mut files = HashMap::new();
+    let mut suspicious_files = Vec::new();
     let mut total_chars = 0;
 
     walker.walk(&target_paths, |absolute_path, relative_path| {
@@ -51,6 +53,8 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                         for secret in result.secrets {
                             tracing::warn!("Potential secret found in {:?}: {}", absolute_path, secret);
                         }
+                        suspicious_files.push(relative_path);
+                        return Ok(());
                     }
                 }
 
@@ -170,6 +174,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         total_files: files.len(),
         total_chars,
         top_files,
-        has_secrets: false, // TODO: track actual security findings
+        has_secrets: !suspicious_files.is_empty(),
+        suspicious_files,
     })
 }
