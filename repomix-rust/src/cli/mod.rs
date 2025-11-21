@@ -35,11 +35,11 @@ pub struct Cli {
     pub style: Option<OutputStyleCli>,
 
     /// Generate parsable output (escape special characters)
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub parsable_style: Option<bool>,
+    #[arg(long)]
+    pub parsable_style: bool,
     /// Do not generate parsable output
-    #[arg(long = "no-parsable-style", action = clap::ArgAction::SetFalse)]
-    pub no_parsable_style: Option<bool>,
+    #[arg(long = "no-parsable-style")]
+    pub no_parsable_style: bool,
 
     /// Custom header text to prepend to the output
     #[arg(long)]
@@ -50,118 +50,118 @@ pub struct Cli {
     pub instruction_file_path: Option<String>,
 
     /// Include file summary section
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub file_summary: Option<bool>,
+    #[arg(long)]
+    pub file_summary: bool,
     /// Exclude file summary section
-    #[arg(long = "no-file-summary", action = clap::ArgAction::SetFalse)]
-    pub no_file_summary: Option<bool>,
+    #[arg(long = "no-file-summary")]
+    pub no_file_summary: bool,
 
     /// Include directory structure section
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub directory_structure: Option<bool>,
+    #[arg(long)]
+    pub directory_structure: bool,
     /// Exclude directory structure section
-    #[arg(long = "no-directory-structure", action = clap::ArgAction::SetFalse)]
-    pub no_directory_structure: Option<bool>,
+    #[arg(long = "no-directory-structure")]
+    pub no_directory_structure: bool,
 
     /// Include file contents section
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub files: Option<bool>,
+    #[arg(long)]
+    pub files: bool,
     /// Exclude file contents section
-    #[arg(long = "no-files", action = clap::ArgAction::SetFalse)]
-    pub no_files: Option<bool>,
+    #[arg(long = "no-files")]
+    pub no_files: bool,
 
     /// Remove comments from supported file types
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub remove_comments: Option<bool>,
+    #[arg(long)]
+    pub remove_comments: bool,
     /// Do not remove comments
-    #[arg(long = "no-remove-comments", action = clap::ArgAction::SetFalse)]
-    pub no_remove_comments: Option<bool>,
+    #[arg(long = "no-remove-comments")]
+    pub no_remove_comments: bool,
 
     /// Remove empty lines from output
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub remove_empty_lines: Option<bool>,
+    #[arg(long)]
+    pub remove_empty_lines: bool,
     /// Do not remove empty lines
-    #[arg(long = "no-remove-empty-lines", action = clap::ArgAction::SetFalse)]
-    pub no_remove_empty_lines: Option<bool>,
+    #[arg(long = "no-remove-empty-lines")]
+    pub no_remove_empty_lines: bool,
 
     /// Perform code compression to reduce token count
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub compress: Option<bool>,
+    #[arg(long)]
+    pub compress: bool,
     /// Do not perform code compression
-    #[arg(long = "no-compress", action = clap::ArgAction::SetFalse)]
-    pub no_compress: Option<bool>,
+    #[arg(long = "no-compress")]
+    pub no_compress: bool,
 
     /// Number of top files to show in summary
     #[arg(long, value_name = "COUNT")]
     pub top_files_length: Option<u32>,
 
     /// Show line numbers in the output
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub show_line_numbers: Option<bool>,
+    #[arg(long)]
+    pub show_line_numbers: bool,
     /// Do not show line numbers
-    #[arg(long = "no-show-line-numbers", action = clap::ArgAction::SetFalse)]
-    pub no_show_line_numbers: Option<bool>,
+    #[arg(long = "no-show-line-numbers")]
+    pub no_show_line_numbers: bool,
 
     /// Truncate long base64 strings
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub truncate_base64: Option<bool>,
+    #[arg(long)]
+    pub truncate_base64: bool,
     /// Do not truncate base64 strings
-    #[arg(long = "no-truncate-base64", action = clap::ArgAction::SetFalse)]
-    pub no_truncate_base64: Option<bool>,
+    #[arg(long = "no-truncate-base64")]
+    pub no_truncate_base64: bool,
 
     /// Copy generated output to system clipboard
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub copy: Option<bool>,
+    #[arg(long)]
+    pub copy: bool,
     /// Do not copy to clipboard
-    #[arg(long = "no-copy", action = clap::ArgAction::SetFalse)]
-    pub no_copy: Option<bool>,
+    #[arg(long = "no-copy")]
+    pub no_copy: bool,
 
     /// Include empty directories in structure
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub include_empty_directories: Option<bool>,
+    #[arg(long)]
+    pub include_empty_directories: bool,
     /// Do not include empty directories
-    #[arg(long = "no-include-empty-directories", action = clap::ArgAction::SetFalse)]
-    pub no_include_empty_directories: Option<bool>,
+    #[arg(long = "no-include-empty-directories")]
+    pub no_include_empty_directories: bool,
 
     /// Include full directory structure (vs. truncated)
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub include_full_directory_structure: Option<bool>,
+    #[arg(long)]
+    pub include_full_directory_structure: bool,
     /// Do not include full directory structure
-    #[arg(long = "no-include-full-directory-structure", action = clap::ArgAction::SetFalse)]
-    pub no_include_full_directory_structure: Option<bool>,
+    #[arg(long = "no-include-full-directory-structure")]
+    pub no_include_full_directory_structure: bool,
 
     /// Enable token count tree display
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub token_count_tree: Option<bool>,
+    #[arg(long)]
+    pub token_count_tree: bool,
     /// Disable token count tree display
-    #[arg(long = "no-token-count-tree", action = clap::ArgAction::SetFalse)]
-    pub no_token_count_tree: Option<bool>,
+    #[arg(long = "no-token-count-tree")]
+    pub no_token_count_tree: bool,
 
     // --- Git Output Options ---
     /// Sort files by git change frequency
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub git_sort_by_changes: Option<bool>,
+    #[arg(long)]
+    pub git_sort_by_changes: bool,
     /// Do not sort files by git change frequency
-    #[arg(long = "no-git-sort-by-changes", action = clap::ArgAction::SetFalse)]
-    pub no_git_sort_by_changes: Option<bool>,
+    #[arg(long = "no-git-sort-by-changes")]
+    pub no_git_sort_by_changes: bool,
 
     /// Max number of commits to consider for git sort
     #[arg(long, value_name = "COUNT")]
     pub git_sort_by_changes_max_commits: Option<u32>,
 
     /// Include git diffs in output
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub git_include_diffs: Option<bool>,
+    #[arg(long)]
+    pub git_include_diffs: bool,
     /// Do not include git diffs
-    #[arg(long = "no-git-include-diffs", action = clap::ArgAction::SetFalse)]
-    pub no_git_include_diffs: Option<bool>,
+    #[arg(long = "no-git-include-diffs")]
+    pub no_git_include_diffs: bool,
 
     /// Include git logs in output
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub git_include_logs: Option<bool>,
+    #[arg(long)]
+    pub git_include_logs: bool,
     /// Do not include git logs
-    #[arg(long = "no-git-include-logs", action = clap::ArgAction::SetFalse)]
-    pub no_git_include_logs: Option<bool>,
+    #[arg(long = "no-git-include-logs")]
+    pub no_git_include_logs: bool,
 
     /// Number of git log commits to include
     #[arg(long, value_name = "COUNT")]
@@ -177,33 +177,33 @@ pub struct Cli {
     pub ignore_patterns: Vec<String>,
 
     /// Use .gitignore files
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub use_gitignore: Option<bool>,
+    #[arg(long)]
+    pub use_gitignore: bool,
     /// Disable reading of .gitignore files
-    #[arg(long = "no-use-gitignore", action = clap::ArgAction::SetFalse)]
-    pub no_use_gitignore: Option<bool>,
+    #[arg(long = "no-use-gitignore")]
+    pub no_use_gitignore: bool,
 
     /// Use .ignore files
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub use_dot_ignore: Option<bool>,
+    #[arg(long)]
+    pub use_dot_ignore: bool,
     /// Disable reading of .ignore files
-    #[arg(long = "no-use-dot-ignore", action = clap::ArgAction::SetFalse)]
-    pub no_use_dot_ignore: Option<bool>,
+    #[arg(long = "no-use-dot-ignore")]
+    pub no_use_dot_ignore: bool,
 
     /// Use built-in default ignore patterns
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub use_default_patterns: Option<bool>,
+    #[arg(long)]
+    pub use_default_patterns: bool,
     /// Disable built-in default ignore patterns
-    #[arg(long = "no-use-default-patterns", action = clap::ArgAction::SetFalse)]
-    pub no_use_default_patterns: Option<bool>,
+    #[arg(long = "no-use-default-patterns")]
+    pub no_use_default_patterns: bool,
 
     // --- Security Options ---
     /// Enable scanning for sensitive data
-    #[arg(long, action = clap::ArgAction::SetTrue)]
-    pub enable_security_check: Option<bool>,
+    #[arg(long)]
+    pub enable_security_check: bool,
     /// Disable scanning for sensitive data
-    #[arg(long = "no-security-check", action = clap::ArgAction::SetFalse)]
-    pub no_enable_security_check: Option<bool>,
+    #[arg(long = "no-security-check")]
+    pub no_enable_security_check: bool,
 
     // --- Token Count Options ---
     /// Tokenizer encoding (e.g., o200k_base, cl100k_base)

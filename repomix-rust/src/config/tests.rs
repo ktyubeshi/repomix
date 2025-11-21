@@ -55,18 +55,11 @@ mod tests {
         config.output.file_summary = true;
 
         // Simulate --no-file-summary
-        // Note: We need to construct Cli manually or parse from args.
-        // Since Cli struct fields are public, we can construct it.
-        // However, constructing a large struct manually is tedious.
-        // We can use Default if we derived it, or just set the fields we care about.
-        // But Cli doesn't derive Default. Let's parse from empty args and modify.
-        
-        // Implementing a helper to create default CLI would be good, but for now:
-        // We can use `Cli::parse_from` with empty args to get defaults, then modify.
         let cli = Cli::parse_from(&["repomix", "--no-file-summary"]);
         
         // The parse_from above actually sets the flag!
-        assert_eq!(cli.no_file_summary, Some(false));
+        // Since we changed `no-*` flags to be bool and SetTrue, presence means true.
+        assert_eq!(cli.no_file_summary, true);
 
         config = config.merge_with_cli(&cli);
 

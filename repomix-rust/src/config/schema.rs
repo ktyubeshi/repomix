@@ -30,11 +30,16 @@ impl Default for TokenCountTreeConfig {
     }
 }
 
+fn true_default() -> bool {
+    true
+}
+
 impl Default for RepomixOutputStyle {
     fn default() -> Self {
         RepomixOutputStyle::Xml
     }
 }
+
 
 impl std::fmt::Display for RepomixOutputStyle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -122,11 +127,11 @@ pub struct OutputConfig {
     pub header_text: Option<String>,
     #[serde(rename = "instructionFilePath")]
     pub instruction_file_path: Option<String>,
-    #[serde(rename = "fileSummary", default)]
+    #[serde(rename = "fileSummary", default = "true_default")]
     pub file_summary: bool,
-    #[serde(rename = "directoryStructure", default)]
+    #[serde(rename = "directoryStructure", default = "true_default")]
     pub directory_structure: bool,
-    #[serde(default)]
+    #[serde(default = "true_default")]
     pub files: bool,
     #[serde(rename = "removeComments", default)]
     pub remove_comments: bool,
@@ -191,11 +196,11 @@ impl OutputConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct IgnoreConfig {
-    #[serde(rename = "useGitignore", default)]
+    #[serde(rename = "useGitignore", default = "true_default")]
     pub use_gitignore: bool,
-    #[serde(rename = "useDotIgnore", default)]
+    #[serde(rename = "useDotIgnore", default = "true_default")]
     pub use_dot_ignore: bool,
-    #[serde(rename = "useDefaultPatterns", default)]
+    #[serde(rename = "useDefaultPatterns", default = "true_default")]
     pub use_default_patterns: bool,
     #[serde(rename = "customPatterns", default)]
     pub custom_patterns: Vec<String>,
@@ -215,7 +220,7 @@ impl Default for IgnoreConfig {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SecurityConfig {
-    #[serde(rename = "enableSecurityCheck", default)]
+    #[serde(rename = "enableSecurityCheck", default = "true_default")]
     pub enable_security_check: bool,
 }
 
@@ -308,10 +313,10 @@ impl RepomixConfig {
             };
         }
         // parsable_style
-        if let Some(parsable_style) = cli.parsable_style {
-            self.output.parsable_style = parsable_style;
-        } else if let Some(no_parsable_style) = cli.no_parsable_style {
-            self.output.parsable_style = no_parsable_style;
+        if cli.no_parsable_style {
+            self.output.parsable_style = false;
+        } else if cli.parsable_style {
+            self.output.parsable_style = true;
         }
 
         if let Some(header_text) = &cli.header_text {
@@ -321,104 +326,112 @@ impl RepomixConfig {
             self.output.instruction_file_path = Some(instruction_file_path.clone());
         }
         // File summary flags
-        if let Some(file_summary) = cli.file_summary {
-            self.output.file_summary = file_summary;
-        } else if let Some(no_file_summary) = cli.no_file_summary {
-            self.output.file_summary = no_file_summary;
+        if cli.no_file_summary {
+            self.output.file_summary = false;
+        } else if cli.file_summary {
+            self.output.file_summary = true;
         }
         // Directory structure flags
-        if let Some(directory_structure) = cli.directory_structure {
-            self.output.directory_structure = directory_structure;
-        } else if let Some(no_directory_structure) = cli.no_directory_structure {
-            self.output.directory_structure = no_directory_structure;
+        if cli.no_directory_structure {
+            self.output.directory_structure = false;
+        } else if cli.directory_structure {
+            self.output.directory_structure = true;
         }
         // Files flags
-        if let Some(files_flag) = cli.files {
-            self.output.files = files_flag;
-        } else if let Some(no_files) = cli.no_files {
-            self.output.files = no_files;
+        if cli.no_files {
+            self.output.files = false;
+        } else if cli.files {
+            self.output.files = true;
         }
         // Remove comments flags
-        if let Some(remove_comments) = cli.remove_comments {
-            self.output.remove_comments = remove_comments;
-        } else if let Some(no_remove_comments) = cli.no_remove_comments {
-            self.output.remove_comments = no_remove_comments;
+        if cli.no_remove_comments {
+            self.output.remove_comments = false;
+        } else if cli.remove_comments {
+            self.output.remove_comments = true;
         }
         // Remove empty lines flags
-        if let Some(remove_empty_lines) = cli.remove_empty_lines {
-            self.output.remove_empty_lines = remove_empty_lines;
-        } else if let Some(no_remove_empty_lines) = cli.no_remove_empty_lines {
-            self.output.remove_empty_lines = no_remove_empty_lines;
+        if cli.no_remove_empty_lines {
+            self.output.remove_empty_lines = false;
+        } else if cli.remove_empty_lines {
+            self.output.remove_empty_lines = true;
         }
         // Compress flags
-        if let Some(compress) = cli.compress {
-            self.output.compress = compress;
-        } else if let Some(no_compress) = cli.no_compress {
-            self.output.compress = no_compress;
+        if cli.no_compress {
+            self.output.compress = false;
+        } else if cli.compress {
+            self.output.compress = true;
         }
         if let Some(top_files_length) = cli.top_files_length {
             self.output.top_files_length = top_files_length;
         }
         // Show line numbers flags
-        if let Some(show_line_numbers) = cli.show_line_numbers {
-            self.output.show_line_numbers = show_line_numbers;
-        } else if let Some(no_show_line_numbers) = cli.no_show_line_numbers {
-            self.output.show_line_numbers = no_show_line_numbers;
+        if cli.no_show_line_numbers {
+            self.output.show_line_numbers = false;
+        } else if cli.show_line_numbers {
+            self.output.show_line_numbers = true;
         }
         // Truncate base64 flags
-        if let Some(truncate_base64) = cli.truncate_base64 {
-            self.output.truncate_base64 = truncate_base64;
-        } else if let Some(no_truncate_base64) = cli.no_truncate_base64 {
-            self.output.truncate_base64 = no_truncate_base64;
+        if cli.no_truncate_base64 {
+            self.output.truncate_base64 = false;
+        } else if cli.truncate_base64 {
+            self.output.truncate_base64 = true;
         }
         // Copy to clipboard flags
-        if let Some(copy_to_clipboard) = cli.copy {
-            self.output.copy_to_clipboard = copy_to_clipboard;
-        } else if let Some(no_copy) = cli.no_copy {
-            self.output.copy_to_clipboard = no_copy;
+        if cli.no_copy {
+            self.output.copy_to_clipboard = false;
+        } else if cli.copy {
+            self.output.copy_to_clipboard = true;
         }
 
-        if let Some(include_empty_directories) = cli.include_empty_directories {
-            self.output.include_empty_directories = include_empty_directories;
-        } else if let Some(no_include_empty_directories) = cli.no_include_empty_directories {
-            self.output.include_empty_directories = no_include_empty_directories;
+        if cli.no_include_empty_directories {
+            self.output.include_empty_directories = false;
+        } else if cli.include_empty_directories {
+            self.output.include_empty_directories = true;
         }
-        if let Some(include_full_directory_structure) = cli.include_full_directory_structure {
-            self.output.include_full_directory_structure = include_full_directory_structure;
-        } else if let Some(no_include_full_directory_structure) = cli.no_include_full_directory_structure {
-            self.output.include_full_directory_structure = no_include_full_directory_structure;
+        if cli.no_include_full_directory_structure {
+            self.output.include_full_directory_structure = false;
+        } else if cli.include_full_directory_structure {
+            self.output.include_full_directory_structure = true;
         }
         // Token count tree flags
-        if let Some(token_count_tree) = cli.token_count_tree {
-            self.output.token_count_tree = TokenCountTreeConfig::Bool(token_count_tree);
-        } else if let Some(no_token_count_tree) = cli.no_token_count_tree {
-             self.output.token_count_tree = TokenCountTreeConfig::Bool(no_token_count_tree);
+        if cli.no_token_count_tree {
+             self.output.token_count_tree = TokenCountTreeConfig::Bool(false);
+        } else if cli.token_count_tree {
+            self.output.token_count_tree = TokenCountTreeConfig::Bool(true);
         }
         // stdout is a simple bool, so it directly overrides
-        self.output.stdout = Some(cli.stdout);
+        // But wait, stdout in CLI is bool, default false.
+        // If user didn't provide --stdout, cli.stdout is false.
+        // Should we only override if true?
+        // `stdout` has no `no-stdout` flag. It's just an action.
+        // So if cli.stdout is true, enable it. If false, leave it (or disable? default is None/false in config).
+        // OutputConfig.stdout is Option<bool>.
+        if cli.stdout {
+            self.output.stdout = Some(true);
+        }
         
 
         // Git output overrides
         // Sort by changes flags
-        if let Some(sort_by_changes) = cli.git_sort_by_changes {
-            self.output.git.sort_by_changes = sort_by_changes;
-        } else if let Some(no_git_sort_by_changes) = cli.no_git_sort_by_changes {
-            self.output.git.sort_by_changes = no_git_sort_by_changes;
+        if cli.no_git_sort_by_changes {
+            self.output.git.sort_by_changes = false;
+        } else if cli.git_sort_by_changes {
+            self.output.git.sort_by_changes = true;
         }
         if let Some(sort_by_changes_max_commits) = cli.git_sort_by_changes_max_commits {
             self.output.git.sort_by_changes_max_commits = sort_by_changes_max_commits;
         }
         // Include diffs flags
-        if let Some(include_diffs) = cli.git_include_diffs {
-            self.output.git.include_diffs = include_diffs;
-        } else if let Some(no_git_include_diffs) = cli.no_git_include_diffs {
-            self.output.git.include_diffs = no_git_include_diffs;
+        if cli.no_git_include_diffs {
+            self.output.git.include_diffs = false;
+        } else if cli.git_include_diffs {
+            self.output.git.include_diffs = true;
         }
         // Include logs flags
-        if let Some(include_logs) = cli.git_include_logs {
-            self.output.git.include_logs = include_logs;
-        } else if let Some(no_git_include_logs) = cli.no_git_include_logs {
-            self.output.git.include_logs = no_git_include_logs;
+        if cli.no_git_include_logs {
+            self.output.git.include_logs = false;
+        } else if cli.git_include_logs {
+            self.output.git.include_logs = true;
         }
         if let Some(include_logs_count) = cli.git_include_logs_count {
             self.output.git.include_logs_count = include_logs_count;
@@ -432,29 +445,29 @@ impl RepomixConfig {
             self.ignore.custom_patterns.extend(cli.ignore_patterns.clone());
         }
         // Use gitignore flags
-        if let Some(use_gitignore) = cli.use_gitignore {
-            self.ignore.use_gitignore = use_gitignore;
-        } else if let Some(no_use_gitignore) = cli.no_use_gitignore {
-            self.ignore.use_gitignore = no_use_gitignore;
+        if cli.no_use_gitignore {
+            self.ignore.use_gitignore = false;
+        } else if cli.use_gitignore {
+            self.ignore.use_gitignore = true;
         }
         // Use dot ignore flags
-        if let Some(use_dot_ignore) = cli.use_dot_ignore {
-            self.ignore.use_dot_ignore = use_dot_ignore;
-        } else if let Some(no_use_dot_ignore) = cli.no_use_dot_ignore {
-            self.ignore.use_dot_ignore = no_use_dot_ignore;
+        if cli.no_use_dot_ignore {
+            self.ignore.use_dot_ignore = false;
+        } else if cli.use_dot_ignore {
+            self.ignore.use_dot_ignore = true;
         }
         // Use default patterns flags
-        if let Some(use_default_patterns) = cli.use_default_patterns {
-            self.ignore.use_default_patterns = use_default_patterns;
-        } else if let Some(no_use_default_patterns) = cli.no_use_default_patterns {
-            self.ignore.use_default_patterns = no_use_default_patterns;
+        if cli.no_use_default_patterns {
+            self.ignore.use_default_patterns = false;
+        } else if cli.use_default_patterns {
+            self.ignore.use_default_patterns = true;
         }
 
         // Security overrides
-        if let Some(enable_security_check) = cli.enable_security_check {
-            self.security.enable_security_check = enable_security_check;
-        } else if let Some(no_enable_security_check) = cli.no_enable_security_check {
-            self.security.enable_security_check = no_enable_security_check;
+        if cli.no_enable_security_check {
+            self.security.enable_security_check = false;
+        } else if cli.enable_security_check {
+            self.security.enable_security_check = true;
         }
 
         // Token Count overrides
