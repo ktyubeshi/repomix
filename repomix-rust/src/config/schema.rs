@@ -16,6 +16,20 @@ pub enum RepomixOutputStyle {
     Plain,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum TokenCountTreeConfig {
+    Bool(bool),
+    Threshold(u64),
+    Text(String),
+}
+
+impl Default for TokenCountTreeConfig {
+    fn default() -> Self {
+        TokenCountTreeConfig::Bool(false)
+    }
+}
+
 impl Default for RepomixOutputStyle {
     fn default() -> Self {
         RepomixOutputStyle::Xml
@@ -133,7 +147,7 @@ pub struct OutputConfig {
     #[serde(rename = "includeFullDirectoryStructure", default)]
     pub include_full_directory_structure: bool,
     #[serde(rename = "tokenCountTree", default)]
-    pub token_count_tree: bool,
+    pub token_count_tree: TokenCountTreeConfig,
     #[serde(default)]
     pub git: GitOutputConfig,
     
@@ -161,7 +175,7 @@ impl Default for OutputConfig {
             copy_to_clipboard: false,
             include_empty_directories: false,
             include_full_directory_structure: false,
-            token_count_tree: false,
+            token_count_tree: TokenCountTreeConfig::Bool(false),
             git: GitOutputConfig::default(),
             stdout: None,
         }
@@ -297,7 +311,7 @@ impl RepomixConfig {
         if let Some(parsable_style) = cli.parsable_style {
             self.output.parsable_style = parsable_style;
         } else if let Some(no_parsable_style) = cli.no_parsable_style {
-            self.output.parsable_style = !no_parsable_style;
+            self.output.parsable_style = no_parsable_style;
         }
 
         if let Some(header_text) = &cli.header_text {
@@ -310,37 +324,37 @@ impl RepomixConfig {
         if let Some(file_summary) = cli.file_summary {
             self.output.file_summary = file_summary;
         } else if let Some(no_file_summary) = cli.no_file_summary {
-            self.output.file_summary = !no_file_summary;
+            self.output.file_summary = no_file_summary;
         }
         // Directory structure flags
         if let Some(directory_structure) = cli.directory_structure {
             self.output.directory_structure = directory_structure;
         } else if let Some(no_directory_structure) = cli.no_directory_structure {
-            self.output.directory_structure = !no_directory_structure;
+            self.output.directory_structure = no_directory_structure;
         }
         // Files flags
         if let Some(files_flag) = cli.files {
             self.output.files = files_flag;
         } else if let Some(no_files) = cli.no_files {
-            self.output.files = !no_files;
+            self.output.files = no_files;
         }
         // Remove comments flags
         if let Some(remove_comments) = cli.remove_comments {
             self.output.remove_comments = remove_comments;
         } else if let Some(no_remove_comments) = cli.no_remove_comments {
-            self.output.remove_comments = !no_remove_comments;
+            self.output.remove_comments = no_remove_comments;
         }
         // Remove empty lines flags
         if let Some(remove_empty_lines) = cli.remove_empty_lines {
             self.output.remove_empty_lines = remove_empty_lines;
         } else if let Some(no_remove_empty_lines) = cli.no_remove_empty_lines {
-            self.output.remove_empty_lines = !no_remove_empty_lines;
+            self.output.remove_empty_lines = no_remove_empty_lines;
         }
         // Compress flags
         if let Some(compress) = cli.compress {
             self.output.compress = compress;
         } else if let Some(no_compress) = cli.no_compress {
-            self.output.compress = !no_compress;
+            self.output.compress = no_compress;
         }
         if let Some(top_files_length) = cli.top_files_length {
             self.output.top_files_length = top_files_length;
@@ -349,36 +363,36 @@ impl RepomixConfig {
         if let Some(show_line_numbers) = cli.show_line_numbers {
             self.output.show_line_numbers = show_line_numbers;
         } else if let Some(no_show_line_numbers) = cli.no_show_line_numbers {
-            self.output.show_line_numbers = !no_show_line_numbers;
+            self.output.show_line_numbers = no_show_line_numbers;
         }
         // Truncate base64 flags
         if let Some(truncate_base64) = cli.truncate_base64 {
             self.output.truncate_base64 = truncate_base64;
         } else if let Some(no_truncate_base64) = cli.no_truncate_base64 {
-            self.output.truncate_base64 = !no_truncate_base64;
+            self.output.truncate_base64 = no_truncate_base64;
         }
         // Copy to clipboard flags
         if let Some(copy_to_clipboard) = cli.copy {
             self.output.copy_to_clipboard = copy_to_clipboard;
         } else if let Some(no_copy) = cli.no_copy {
-            self.output.copy_to_clipboard = !no_copy;
+            self.output.copy_to_clipboard = no_copy;
         }
 
         if let Some(include_empty_directories) = cli.include_empty_directories {
             self.output.include_empty_directories = include_empty_directories;
         } else if let Some(no_include_empty_directories) = cli.no_include_empty_directories {
-            self.output.include_empty_directories = !no_include_empty_directories;
+            self.output.include_empty_directories = no_include_empty_directories;
         }
         if let Some(include_full_directory_structure) = cli.include_full_directory_structure {
             self.output.include_full_directory_structure = include_full_directory_structure;
         } else if let Some(no_include_full_directory_structure) = cli.no_include_full_directory_structure {
-            self.output.include_full_directory_structure = !no_include_full_directory_structure;
+            self.output.include_full_directory_structure = no_include_full_directory_structure;
         }
         // Token count tree flags
         if let Some(token_count_tree) = cli.token_count_tree {
-            self.output.token_count_tree = token_count_tree;
+            self.output.token_count_tree = TokenCountTreeConfig::Bool(token_count_tree);
         } else if let Some(no_token_count_tree) = cli.no_token_count_tree {
-            self.output.token_count_tree = !no_token_count_tree;
+             self.output.token_count_tree = TokenCountTreeConfig::Bool(no_token_count_tree);
         }
         // stdout is a simple bool, so it directly overrides
         self.output.stdout = Some(cli.stdout);
@@ -389,7 +403,7 @@ impl RepomixConfig {
         if let Some(sort_by_changes) = cli.git_sort_by_changes {
             self.output.git.sort_by_changes = sort_by_changes;
         } else if let Some(no_git_sort_by_changes) = cli.no_git_sort_by_changes {
-            self.output.git.sort_by_changes = !no_git_sort_by_changes;
+            self.output.git.sort_by_changes = no_git_sort_by_changes;
         }
         if let Some(sort_by_changes_max_commits) = cli.git_sort_by_changes_max_commits {
             self.output.git.sort_by_changes_max_commits = sort_by_changes_max_commits;
@@ -398,13 +412,13 @@ impl RepomixConfig {
         if let Some(include_diffs) = cli.git_include_diffs {
             self.output.git.include_diffs = include_diffs;
         } else if let Some(no_git_include_diffs) = cli.no_git_include_diffs {
-            self.output.git.include_diffs = !no_git_include_diffs;
+            self.output.git.include_diffs = no_git_include_diffs;
         }
         // Include logs flags
         if let Some(include_logs) = cli.git_include_logs {
             self.output.git.include_logs = include_logs;
         } else if let Some(no_git_include_logs) = cli.no_git_include_logs {
-            self.output.git.include_logs = !no_git_include_logs;
+            self.output.git.include_logs = no_git_include_logs;
         }
         if let Some(include_logs_count) = cli.git_include_logs_count {
             self.output.git.include_logs_count = include_logs_count;
@@ -421,26 +435,26 @@ impl RepomixConfig {
         if let Some(use_gitignore) = cli.use_gitignore {
             self.ignore.use_gitignore = use_gitignore;
         } else if let Some(no_use_gitignore) = cli.no_use_gitignore {
-            self.ignore.use_gitignore = !no_use_gitignore;
+            self.ignore.use_gitignore = no_use_gitignore;
         }
         // Use dot ignore flags
         if let Some(use_dot_ignore) = cli.use_dot_ignore {
             self.ignore.use_dot_ignore = use_dot_ignore;
         } else if let Some(no_use_dot_ignore) = cli.no_use_dot_ignore {
-            self.ignore.use_dot_ignore = !no_use_dot_ignore;
+            self.ignore.use_dot_ignore = no_use_dot_ignore;
         }
         // Use default patterns flags
         if let Some(use_default_patterns) = cli.use_default_patterns {
             self.ignore.use_default_patterns = use_default_patterns;
         } else if let Some(no_use_default_patterns) = cli.no_use_default_patterns {
-            self.ignore.use_default_patterns = !no_use_default_patterns;
+            self.ignore.use_default_patterns = no_use_default_patterns;
         }
 
         // Security overrides
         if let Some(enable_security_check) = cli.enable_security_check {
             self.security.enable_security_check = enable_security_check;
         } else if let Some(no_enable_security_check) = cli.no_enable_security_check {
-            self.security.enable_security_check = !no_enable_security_check;
+            self.security.enable_security_check = no_enable_security_check;
         }
 
         // Token Count overrides

@@ -1,6 +1,8 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
+pub mod init;
+
 #[derive(Parser, Debug)]
 #[command(name = "repomix")]
 #[command(about = "Pack your repository into a single AI-friendly file", long_about = None)]
@@ -224,6 +226,14 @@ pub struct Cli {
     /// Run as MCP server
     #[arg(long)]
     pub server: bool,
+
+    /// Initialize a new configuration file
+    #[arg(long)]
+    pub init: bool,
+
+    /// Use global configuration directory for init
+    #[arg(long, requires = "init")]
+    pub global: bool,
 
     /// Remote repository URL
     #[arg(long)]

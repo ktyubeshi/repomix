@@ -2,7 +2,6 @@
 
 use anyhow::{Result, bail};
 use std::path::PathBuf;
-use tracing::warn;
 
 // Mimics Node.js getGlobalDirectory
 pub fn get_global_directory() -> Result<PathBuf> {

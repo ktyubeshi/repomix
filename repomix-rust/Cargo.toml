@@ -41,6 +41,7 @@ rayon = "1.8" # Data parallelism
 tiktoken-rs = "0.5" # Token counting
 indicatif = "0.17" # Progress bar
 console = "0.15" # Terminal output control
+dialoguer = "0.11" # Interactive terminal
 arboard = "3.3" # Clipboard operations
 regex = "1.10"
 lazy_static = "1.4"

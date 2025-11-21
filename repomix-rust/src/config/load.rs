@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use tracing::{debug, trace, warn};
 use super::global_directory;
 use std::fs;
-use crate::config::schema::{RepomixConfig, RepomixOutputStyle};
+use crate::config::schema::RepomixConfig;
 use tokio::process::Command; // Added for subprocess execution
 use std::process::Stdio; // Added for Stdio
 

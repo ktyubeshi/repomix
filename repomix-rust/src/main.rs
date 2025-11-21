@@ -7,14 +7,18 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use cli::Cli;
 use shared::logger;
-use crate::config::schema::RepomixConfig;
-use std::path::Path; // Added this line
+use std::path::Path;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logger
     // Parse CLI arguments
     let mut args = Cli::parse();
+
+    if args.init {
+        let cwd = std::env::current_dir().context("Failed to get current working directory")?;
+        return cli::init::run_init_action(&cwd, args.global);
+    }
 
     // If --remote is provided, treat it as a target directory/URL
     if let Some(remote_url) = &args.remote {
@@ -45,9 +49,6 @@ async fn main() -> Result<()> {
     } else {
         Vec::new()
     };
-
-use crate::config::schema::RepomixConfig; // Corrected import
-// ...
 
     // Load configuration
     let mut config = config::load::load_file_config(
