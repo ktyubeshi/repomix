@@ -60,3 +60,14 @@ repomix-output.*
 # private files
 .private/
 .env
+
+# Temporary files from tests
+tmp_compare/
+tmp_test/
+node_log.txt
+
+# Rust build artifacts
+repomix-rust/target/
+
+# Temporary directory
+tmp/
