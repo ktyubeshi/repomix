@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::cli::{Cli, OutputStyleCli}; // Added OutputStyleCli import
+use crate::cli::{Cli, OutputStyleCli};
+
 
 // --- Enums ---
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -248,7 +249,7 @@ pub struct RepomixConfig {
 
     // Config options only present in RepomixConfigMerged (Node.js terminology)
     // These fields are not expected to come from config files, but are set programmatically.
-    #[serde(skip)] // Use skip to ignore these fields during (de)serialization
+    #[serde(skip)]
     pub cwd: PathBuf,
     #[serde(skip)]
     pub stdin_file_paths: Vec<PathBuf>,
@@ -292,9 +293,13 @@ impl RepomixConfig {
                 OutputStyleCli::Plain => RepomixOutputStyle::Plain,
             };
         }
+        // parsable_style
         if let Some(parsable_style) = cli.parsable_style {
             self.output.parsable_style = parsable_style;
+        } else if let Some(no_parsable_style) = cli.no_parsable_style {
+            self.output.parsable_style = !no_parsable_style;
         }
+
         if let Some(header_text) = &cli.header_text {
             self.output.header_text = Some(header_text.clone());
         }
@@ -369,6 +374,7 @@ impl RepomixConfig {
         } else if let Some(no_include_full_directory_structure) = cli.no_include_full_directory_structure {
             self.output.include_full_directory_structure = !no_include_full_directory_structure;
         }
+        // Token count tree flags
         if let Some(token_count_tree) = cli.token_count_tree {
             self.output.token_count_tree = token_count_tree;
         } else if let Some(no_token_count_tree) = cli.no_token_count_tree {
@@ -379,6 +385,7 @@ impl RepomixConfig {
         
 
         // Git output overrides
+        // Sort by changes flags
         if let Some(sort_by_changes) = cli.git_sort_by_changes {
             self.output.git.sort_by_changes = sort_by_changes;
         } else if let Some(no_git_sort_by_changes) = cli.no_git_sort_by_changes {
@@ -387,11 +394,13 @@ impl RepomixConfig {
         if let Some(sort_by_changes_max_commits) = cli.git_sort_by_changes_max_commits {
             self.output.git.sort_by_changes_max_commits = sort_by_changes_max_commits;
         }
+        // Include diffs flags
         if let Some(include_diffs) = cli.git_include_diffs {
             self.output.git.include_diffs = include_diffs;
         } else if let Some(no_git_include_diffs) = cli.no_git_include_diffs {
             self.output.git.include_diffs = !no_git_include_diffs;
         }
+        // Include logs flags
         if let Some(include_logs) = cli.git_include_logs {
             self.output.git.include_logs = include_logs;
         } else if let Some(no_git_include_logs) = cli.no_git_include_logs {
@@ -439,13 +448,8 @@ impl RepomixConfig {
             self.token_count.encoding = encoding.clone();
         }
 
-        self.remote_branch = cli.remote_branch.clone(); // Set remote branch from cli
+        self.remote_branch = cli.remote_branch.clone();
 
         self
     }
-}
-
-// Helper to provide a full default config for testing and initial setup
-pub fn get_default_config() -> RepomixConfig {
-    RepomixConfig::default()
 }
