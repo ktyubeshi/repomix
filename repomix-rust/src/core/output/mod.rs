@@ -1,4 +1,4 @@
-use crate::config::RepomixConfig;
+use crate::config::schema::RepomixConfig;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -9,9 +9,10 @@ pub struct RepomixOutput {
 
 pub fn format(config: &RepomixConfig, files: &HashMap<PathBuf, String>) -> Result<RepomixOutput> {
     let mut output = String::new();
-    let style = config.output.style.as_deref().unwrap_or("xml");
+    let style = config.output.style.to_string(); // Get String
+    let style_str = style.as_str(); // Get &str
 
-    match style {
+    match style_str {
         "markdown" => format_markdown(&mut output, files, config),
         "plain" => format_plain(&mut output, files, config),
         _ => format_xml_full(&mut output, files, config)?,
@@ -139,9 +140,9 @@ fn format_xml_full(
 
     // Git Logs
     if config.output.git.include_logs {
-        let max_commits = config.output.git.include_logs_count.unwrap_or(50);
+        let max_commits = config.output.git.include_logs_count;
         output.push_str("<git_logs>\n");
-        if let Ok(commits) = crate::core::git::get_git_log(std::path::Path::new("."), max_commits) {
+        if let Ok(commits) = crate::core::git::get_git_log(std::path::Path::new("."), max_commits as usize) {
             for commit in commits {
                 output.push_str("<git_log_commit>\n");
                 output.push_str(&format!("<date>{}</date>\n", commit.date));
@@ -206,7 +207,7 @@ fn generate_header(config: &RepomixConfig) -> String {
     if config.output.parsable_style {
         processing_notes.push(format!(
             "content has been formatted for parsing in {} style",
-            config.output.style.as_deref().unwrap_or("xml")
+            &config.output.style.to_string()
         ));
     }
     if config.output.compress {
@@ -275,7 +276,7 @@ fn generate_summary_notes(config: &RepomixConfig) -> String {
     if config.output.parsable_style {
         notes.push(format!(
             "- Content has been formatted for parsing in {} style",
-            config.output.style.as_deref().unwrap_or("xml")
+            &config.output.style.to_string()
         ));
     }
     if config.output.compress {
@@ -297,7 +298,7 @@ fn generate_summary_notes(config: &RepomixConfig) -> String {
     }
 
     if config.output.git.include_logs {
-        let max_commits = config.output.git.include_logs_count.unwrap_or(50);
+        let max_commits = config.output.git.include_logs_count;
         notes.push(format!("- Git logs ({} commits) are included to show development patterns", max_commits));
     }
 

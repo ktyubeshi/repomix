@@ -7,6 +7,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use cli::Cli;
 use shared::logger;
+use crate::config::schema::RepomixConfig;
+use std::path::Path; // Added this line
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -44,11 +46,18 @@ async fn main() -> Result<()> {
         Vec::new()
     };
 
+use crate::config::schema::RepomixConfig; // Corrected import
+// ...
+
     // Load configuration
-    let config = config::RepomixConfig::load_from_file(args.config.clone())
-        .context("Failed to load configuration")?
-        .merge_with_cli(&args)
-        .with_stdin_file_paths(stdin_paths);
+    let mut config = config::load::load_file_config(
+        &std::env::current_dir().context("Failed to get current working directory")?,
+        args.config.as_ref().map(|p| p.as_path()),
+    ).await.context("Failed to load configuration")?;
+
+    config = config.merge_with_cli(&args);
+    config.stdin_file_paths = stdin_paths;
+
 
     // Run packing
     println!("\n📦 Repomix v{}\n", env!("CARGO_PKG_VERSION"));
@@ -115,7 +124,7 @@ async fn main() -> Result<()> {
     } else if let Some(output_path) = &config.output.file_path {
         std::fs::write(output_path, &result.output)
             .with_context(|| format!("Failed to write output to {:?}", output_path))?;
-        println!("       Output: {}", output_path.display());
+        println!("       Output: {}", Path::new(output_path).display());
         println!(
             "     Security: {}",
             if result.has_secrets {
@@ -140,7 +149,7 @@ async fn main() -> Result<()> {
     }
 
     // Clipboard
-    if args.copy || config.output.copy_to_clipboard {
+    if config.output.copy_to_clipboard {
         let mut clipboard = arboard::Clipboard::new().context("Failed to initialize clipboard")?;
         clipboard
             .set_text(&result.output)

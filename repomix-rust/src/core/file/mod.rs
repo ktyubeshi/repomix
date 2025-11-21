@@ -1,4 +1,4 @@
-use crate::config::{default_ignore::DEFAULT_IGNORE_PATTERNS, RepomixConfig};
+use crate::config::{default_ignore::DEFAULT_IGNORE_PATTERNS, schema::RepomixConfig};
 use anyhow::{bail, Context, Result};
 mod binary_extensions;
 use self::binary_extensions::BINARY_EXTENSIONS;
@@ -52,11 +52,12 @@ impl FileWalker {
             None
         };
 
-        let output_path = config.output.file_path.as_ref().map(|path| {
-            if path.is_absolute() {
-                path.clone()
+        let output_path = config.output.file_path.as_ref().map(|path_str| {
+            let path_buf = PathBuf::from(path_str);
+            if path_buf.is_absolute() {
+                path_buf
             } else {
-                config.cwd.join(path)
+                config.cwd.join(&path_buf)
             }
         });
 

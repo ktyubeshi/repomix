@@ -161,7 +161,7 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
 
     // Load default config
     // TODO: Allow options to override config
-    let config = crate::config::RepomixConfig::default();
+    let config = crate::config::schema::RepomixConfig::default();
 
     let path = std::path::PathBuf::from(directory);
     let result = crate::core::pack::pack(&config, &[path]).map_err(|e| JsonRpcError {

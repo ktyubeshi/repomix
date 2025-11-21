@@ -1,4 +1,4 @@
-use crate::config::RepomixConfig;
+use crate::config::schema::RepomixConfig;
 use crate::core::{compress, file, metrics, output, remote, security};
 use anyhow::Result;
 use std::collections::HashMap;
