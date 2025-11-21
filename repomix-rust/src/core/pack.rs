@@ -40,35 +40,35 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     let mut files = HashMap::new();
     let mut total_chars = 0;
 
-    walker.walk(&target_paths, |path| {
-        match file::read_file(&path, config) {
+    walker.walk(&target_paths, |absolute_path, relative_path| {
+        match file::read_file(&absolute_path, config) {
             Ok(Some(content)) => {
-                tracing::debug!("Read file: {:?} (len: {})", path, content.len());
+                tracing::debug!("Read file: {:?} (len: {})", absolute_path, content.len());
 
                 // Security check
                 if config.security.enable_security_check {
-                    if let Ok(Some(result)) = security::scan_content(&path, &content) {
+                    if let Ok(Some(result)) = security::scan_content(&absolute_path, &content) {
                         for secret in result.secrets {
-                            tracing::warn!("Potential secret found in {:?}: {}", path, secret);
+                            tracing::warn!("Potential secret found in {:?}: {}", absolute_path, secret);
                         }
                     }
                 }
 
                 // Compression
                 let final_content = if config.output.compress {
-                    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+                    let ext = absolute_path.extension().and_then(|s| s.to_str()).unwrap_or("");
                     match compress::compress_content(&content, ext) {
                         Ok(c) => {
                             tracing::debug!(
                                 "Compressed {:?} ({} -> {} chars)",
-                                path,
+                                absolute_path,
                                 content.len(),
                                 c.len()
                             );
                             c
                         }
                         Err(e) => {
-                            tracing::warn!("Failed to compress {:?}: {}", path, e);
+                            tracing::warn!("Failed to compress {:?}: {}", absolute_path, e);
                             content
                         }
                     }
@@ -77,10 +77,10 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                 };
 
                 total_chars += final_content.len();
-                files.insert(path, final_content);
+                files.insert(relative_path, final_content);
             }
             Err(e) => {
-                tracing::warn!("Failed to read file {:?}: {}", path, e);
+                tracing::warn!("Failed to read file {:?}: {}", absolute_path, e);
             }
             Ok(None) => {}
         }

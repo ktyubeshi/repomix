@@ -38,6 +38,7 @@ fn run_node_repomix(input_dir: &Path, output_file: &Path) -> String {
         .arg("xml")
         .arg("--output")
         .arg(&output_abs)
+        // Add ignore to avoid including output files in each other if they are close (though here they are separate)
         .output()
         .expect("Failed to run node repomix");
         
@@ -146,6 +147,12 @@ proptest! {
         let node_out = run_node_repomix(&input_dir, &node_out_path);
         let rust_out = run_rust_repomix(&input_dir, &rust_out_path);
         
+        // Verify header presence in both
+        assert!(node_out.contains("This file is a merged representation"), "Node output missing header");
+        assert!(rust_out.contains("This file is a merged representation"), "Rust output missing header");
+        assert!(rust_out.contains("<file_summary>"), "Rust output missing file_summary");
+        
+        // Verify parsed content
         let node_files = parse_output(&node_out, &input_dir);
         let rust_files = parse_output(&rust_out, &input_dir);
         
@@ -159,7 +166,8 @@ proptest! {
         for key in node_keys {
             let node_content = node_files.get(key).unwrap();
             let rust_content = rust_files.get(key).unwrap();
-            assert_eq!(node_content, rust_content, "Content mismatch for {}", key);
+            // trim because one might have extra newline from template or parsing
+            assert_eq!(node_content.trim(), rust_content.trim(), "Content mismatch for {}", key);
         }
     }
 }

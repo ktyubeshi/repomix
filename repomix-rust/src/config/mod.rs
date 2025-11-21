@@ -89,6 +89,8 @@ pub struct OutputConfig {
     #[serde(default)]
     pub show_line_numbers: bool,
     #[serde(default = "true_default")]
+    pub truncate_base64: bool,
+    #[serde(default = "true_default")]
     pub include_empty_directories: bool,
     #[serde(default)]
     pub git: GitConfig,
@@ -112,6 +114,7 @@ impl Default for OutputConfig {
             top_files_length: default_top_files_length(),
             show_line_numbers: false,
             include_empty_directories: true_default(),
+            truncate_base64: true_default(),
             git: GitConfig::default(),
         }
     }
@@ -134,6 +137,10 @@ pub struct GitConfig {
     pub sort_by_changes_max_commits: Option<usize>,
     #[serde(default)]
     pub include_diffs: bool,
+    #[serde(default)]
+    pub include_logs: bool,
+    #[serde(default)]
+    pub include_logs_count: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -249,6 +256,7 @@ impl RepomixConfig {
         }
 
         if !cli.ignore.is_empty() {
+            tracing::debug!("Adding CLI ignores: {:?}", cli.ignore);
             self.ignore
                 .custom_patterns
                 .extend(cli.ignore.iter().cloned());

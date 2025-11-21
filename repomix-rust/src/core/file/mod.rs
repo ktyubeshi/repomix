@@ -70,7 +70,7 @@ impl FileWalker {
 
     pub fn walk<F>(&self, paths: &[PathBuf], mut callback: F) -> Result<()>
     where
-        F: FnMut(PathBuf) -> Result<()>,
+        F: FnMut(PathBuf, PathBuf) -> Result<()>,
     {
         if paths.is_empty() {
             bail!("No target directories supplied");
@@ -94,7 +94,7 @@ impl FileWalker {
 
     fn walk_root<F>(&self, root: &Path, callback: &mut F) -> Result<()>
     where
-        F: FnMut(PathBuf) -> Result<()>,
+        F: FnMut(PathBuf, PathBuf) -> Result<()>,
     {
         let include_patterns = self.include_patterns_for_root(root);
         let include_matcher = IncludeMatcher::new(include_patterns)?;
@@ -124,7 +124,7 @@ impl FileWalker {
                         continue;
                     }
 
-                    callback(path.to_path_buf())?;
+                    callback(path.to_path_buf(), PathBuf::from(relative))?;
                 }
                 Err(err) => {
                     tracing::warn!("Error walking path: {}", err);
@@ -242,7 +242,9 @@ fn normalize_ignore_pattern(pattern: &str) -> String {
         return unix.trim_end_matches('/').to_string();
     }
 
-    if unix.starts_with("**/") && !unix.contains("/**") {
+    // Only append /** if it doesn't look like a file pattern (has no dot)
+    // This is a heuristic to avoid breaking **/*.xml -> **/*.xml/**
+    if unix.starts_with("**/") && !unix.contains("/**") && !unix.contains('.') {
         return format!("{unix}/**");
     }
 
@@ -467,13 +469,8 @@ mod tests {
     fn collect_relative_files(walker: &FileWalker, root: &Path) -> Vec<String> {
         let mut files = Vec::new();
         walker
-            .walk(&[root.to_path_buf()], |path| {
-                let rel = path
-                    .strip_prefix(root)
-                    .unwrap()
-                    .to_string_lossy()
-                    .replace('\\', "/");
-                files.push(rel);
+            .walk(&[root.to_path_buf()], |_absolute, relative| {
+                files.push(relative.to_string_lossy().replace('\\', "/"));
                 Ok(())
             })
             .unwrap();
