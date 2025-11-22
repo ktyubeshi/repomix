@@ -42,7 +42,7 @@ pub fn run_init_action(root_dir: &Path, is_global: bool) -> Result<()> {
 
 fn create_config_file(tui: &Tui, root_dir: &Path, is_global: bool) -> Result<PromptResult<bool>> {
     let target_dir = if is_global {
-        global_directory::get_global_directory()? 
+        global_directory::get_global_directory()?
     } else {
         root_dir.to_path_buf()
     };
@@ -56,7 +56,7 @@ fn create_config_file(tui: &Tui, root_dir: &Path, is_global: bool) -> Result<Pro
     );
 
     match tui.confirm(&prompt_msg, true)? {
-        PromptResult::Ok(true) => {} 
+        PromptResult::Ok(true) => {}
         PromptResult::Ok(false) => {
             tui.log_info(&format!(
                 "Skipping {} file creation.",
@@ -75,7 +75,7 @@ fn create_config_file(tui: &Tui, root_dir: &Path, is_global: bool) -> Result<Pro
         );
 
         match tui.confirm(&overwrite_msg, false)? {
-            PromptResult::Ok(true) => {} 
+            PromptResult::Ok(true) => {}
             PromptResult::Ok(false) => {
                 tui.log_info(&format!(
                     "Skipping {} file creation.",
@@ -169,14 +169,14 @@ fn create_ignore_file(tui: &Tui, root_dir: &Path, is_global: bool) -> Result<Pro
     );
 
     match tui.confirm(&prompt_msg, true)? {
-        PromptResult::Ok(true) => {} 
+        PromptResult::Ok(true) => {}
         PromptResult::Ok(false) => {
             tui.log_info(&format!(
                 "Skipping {} file creation.",
                 style(".repomixignore").green()
             ));
             return Ok(PromptResult::Ok(false));
-        },
+        }
         PromptResult::Cancel => return Ok(PromptResult::Cancel),
     }
 
@@ -187,7 +187,7 @@ fn create_ignore_file(tui: &Tui, root_dir: &Path, is_global: bool) -> Result<Pro
         );
 
         match tui.confirm(&overwrite_msg, false)? {
-            PromptResult::Ok(true) => {} 
+            PromptResult::Ok(true) => {}
             PromptResult::Ok(false) => {
                 tui.log_info(&format!(
                     "{} file creation skipped. Existing file will not be modified.",
