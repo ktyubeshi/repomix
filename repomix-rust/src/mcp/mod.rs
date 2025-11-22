@@ -181,10 +181,16 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
         })?;
 
     // Parse optional arguments
-    let compress = args.get("compress").and_then(|v| v.as_bool()).unwrap_or(false);
+    let compress = args
+        .get("compress")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
     let include_patterns = args.get("includePatterns").and_then(|v| v.as_str());
     let ignore_patterns = args.get("ignorePatterns").and_then(|v| v.as_str());
-    let top_files_length = args.get("topFilesLength").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
+    let top_files_length = args
+        .get("topFilesLength")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(10) as usize;
     let style_str = args.get("style").and_then(|v| v.as_str()).unwrap_or("xml");
 
     let style = match style_str {
@@ -206,13 +212,13 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
     // Node.js creates a temp dir. Rust `pack` returns the string content in `PackResult`.
     // We can return the content directly in the tool response.
     // Node.js `runCli` writes to file.
-    // Let's set `output.file_path` to None to avoid writing to current dir, 
+    // Let's set `output.file_path` to None to avoid writing to current dir,
     // OR use a temp dir if `pack` requires it.
     // Rust `pack` writes to file if `config.output.file_path` is Some.
-    config.output.file_path = None; 
+    config.output.file_path = None;
     config.output.stdout = Some(true); // To ensure logging goes to stderr? No, `stdout` flag in Rust just prints output to stdout.
-    // Wait, `pack` returns `PackResult` containing `output` string. It writes to file only if `file_path` is set.
-    
+                                       // Wait, `pack` returns `PackResult` containing `output` string. It writes to file only if `file_path` is set.
+
     if let Some(patterns) = include_patterns {
         for p in patterns.split(',') {
             if !p.trim().is_empty() {
@@ -220,7 +226,7 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
             }
         }
     }
-    
+
     if let Some(patterns) = ignore_patterns {
         for p in patterns.split(',') {
             if !p.trim().is_empty() {
@@ -233,7 +239,7 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
     // Or `pack` handles absolute paths.
     // Node.js `runCli` takes `cwd`.
     let path = std::path::PathBuf::from(directory);
-    
+
     // pack takes `&[PathBuf]`.
     let result = crate::core::pack::pack(&config, &[path]).map_err(|e| JsonRpcError {
         code: -32603,
@@ -246,7 +252,7 @@ fn handle_tools_call(params: Option<Value>) -> Result<Value, JsonRpcError> {
     // Here we just return the content for now, or a summary.
     // The tool description says "generates a comprehensive report ...".
     // Node.js returns the content of the file.
-    
+
     Ok(json!({
         "content": [
             {

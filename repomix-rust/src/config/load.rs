@@ -1,14 +1,14 @@
 // repomix-rust/src/config/load.rs
 // This file will contain the logic for loading repomix configuration.
 
-use anyhow::{bail, Context, Result};
-use std::path::{Path, PathBuf};
-use tracing::{debug, trace, warn};
 use super::global_directory;
-use std::fs;
 use crate::config::schema::RepomixConfig;
+use anyhow::{bail, Context, Result};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use tokio::process::Command; // Added for subprocess execution
-use std::process::Stdio; // Added for Stdio
+use tracing::{debug, trace, warn}; // Added for Stdio
 
 const DEFAULT_CONFIG_PATHS: [&str; 9] = [
     "repomix.config.ts",
@@ -42,14 +42,20 @@ fn get_file_extension(file_path: &Path) -> Option<&str> {
 }
 
 async fn load_js_ts_config_with_subprocess(file_path: PathBuf) -> Result<RepomixConfig> {
-    debug!("Attempting to load JS/TS config file {:?} via subprocess...", file_path);
+    debug!(
+        "Attempting to load JS/TS config file {:?} via subprocess...",
+        file_path
+    );
 
     // Get the path to the jiti_config_loader.js script
     let current_dir = std::env::current_dir().context("Failed to get current directory")?;
     let loader_script_path = current_dir.join("repomix-rust/src/config/jiti_config_loader.js");
 
     if !loader_script_path.is_file() {
-        bail!("Jiti config loader script not found at {:?}", loader_script_path);
+        bail!(
+            "Jiti config loader script not found at {:?}",
+            loader_script_path
+        );
     }
 
     // Execute Node.js as a subprocess
@@ -61,20 +67,35 @@ async fn load_js_ts_config_with_subprocess(file_path: PathBuf) -> Result<Repomix
         .spawn()
         .context("Failed to spawn Node.js subprocess. Is Node.js installed and in PATH?")?;
 
-    let output = command.wait_with_output().await.context("Failed to wait for Node.js subprocess")?;
+    let output = command
+        .wait_with_output()
+        .await
+        .context("Failed to wait for Node.js subprocess")?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        bail!("Node.js subprocess failed to load config from {:?}:\n{}", file_path, stderr);
+        bail!(
+            "Node.js subprocess failed to load config from {:?}:\n{}",
+            file_path,
+            stderr
+        );
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     if stdout.trim().is_empty() {
-        bail!("Node.js subprocess returned empty output for config file {:?}", file_path);
+        bail!(
+            "Node.js subprocess returned empty output for config file {:?}",
+            file_path
+        );
     }
 
-    serde_json::from_str(&stdout)
-        .map_err(|e| anyhow::anyhow!("Failed to parse JSON output from Node.js subprocess for {:?}: {}", file_path, e))
+    serde_json::from_str(&stdout).map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to parse JSON output from Node.js subprocess for {:?}: {}",
+            file_path,
+            e
+        )
+    })
 }
 
 async fn load_and_validate_config(file_path: PathBuf) -> Result<RepomixConfig> {
@@ -82,10 +103,12 @@ async fn load_and_validate_config(file_path: PathBuf) -> Result<RepomixConfig> {
 
     let config: RepomixConfig = match ext {
         Some("json") | Some("json5") | Some("jsonc") => {
-            let file_content = fs::read_to_string(&file_path)
-                .map_err(|e| anyhow::anyhow!("Failed to read config file {:?}: {}", file_path, e))?;
-            json5::from_str(&file_content)
-                .map_err(|e| anyhow::anyhow!("Failed to parse config file {:?}: {}", file_path, e))?
+            let file_content = fs::read_to_string(&file_path).map_err(|e| {
+                anyhow::anyhow!("Failed to read config file {:?}: {}", file_path, e)
+            })?;
+            json5::from_str(&file_content).map_err(|e| {
+                anyhow::anyhow!("Failed to parse config file {:?}: {}", file_path, e)
+            })?
         }
         Some("ts") | Some("mts") | Some("cts") | Some("js") | Some("mjs") | Some("cjs") => {
             load_js_ts_config_with_subprocess(file_path).await?
@@ -96,7 +119,6 @@ async fn load_and_validate_config(file_path: PathBuf) -> Result<RepomixConfig> {
     // TODO: Implement actual schema validation (similar to Zod). For now, serde will handle basic type checks.
     Ok(config)
 }
-
 
 pub async fn load_file_config(
     root_dir: &Path,

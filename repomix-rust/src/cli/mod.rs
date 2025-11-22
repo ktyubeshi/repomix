@@ -2,6 +2,7 @@ use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
 pub mod init;
+pub mod tui;
 
 #[derive(Parser, Debug)]
 #[command(name = "repomix")]
@@ -25,7 +26,7 @@ pub struct Cli {
     /// Specify the output file path (defaults to repomix-output.xml/md/json/txt)
     #[arg(short, long = "output", value_name = "FILE")]
     pub output_file: Option<String>,
-    
+
     /// Output to stdout instead of writing to a file
     #[arg(long, conflicts_with = "output_file")]
     pub stdout: bool, // This remains bool, as it's a direct toggle and handled separately

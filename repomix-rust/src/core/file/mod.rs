@@ -172,7 +172,7 @@ impl FileWalker {
         // Shared state for the parallel walker
         // We use Arc to share read-only state, but include_matcher and self need to be Sync
         // GlobSet (in IncludeMatcher and self.custom_ignore) is Send+Sync.
-        
+
         walker.run(|| {
             Box::new(|result| {
                 match result {

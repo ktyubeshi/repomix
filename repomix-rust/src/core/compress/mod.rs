@@ -1,6 +1,6 @@
 use anyhow::Result;
-use tree_sitter::{Parser, Query, QueryCursor};
 use std::collections::HashMap;
+use tree_sitter::{Parser, Query, QueryCursor};
 
 mod queries;
 
@@ -15,8 +15,14 @@ struct Chunk {
 pub fn compress_content(content: &str, extension: &str) -> Result<String> {
     let (language, query_str) = match extension {
         "rs" => (tree_sitter_rust::language(), queries::QUERY_RUST),
-        "ts" | "tsx" => (tree_sitter_typescript::language_typescript(), queries::QUERY_TYPESCRIPT),
-        "js" | "jsx" => (tree_sitter_javascript::language(), queries::QUERY_JAVASCRIPT),
+        "ts" | "tsx" => (
+            tree_sitter_typescript::language_typescript(),
+            queries::QUERY_TYPESCRIPT,
+        ),
+        "js" | "jsx" => (
+            tree_sitter_javascript::language(),
+            queries::QUERY_JAVASCRIPT,
+        ),
         "py" => (tree_sitter_python::language(), queries::QUERY_PYTHON),
         "go" => (tree_sitter_go::language(), queries::QUERY_GO),
         _ => return Ok(content.to_string()),
@@ -39,29 +45,33 @@ pub fn compress_content(content: &str, extension: &str) -> Result<String> {
     for m in matches {
         for capture in m.captures {
             let capture_name = query.capture_names()[capture.index as usize].as_str();
-            
+
             let is_name = capture_name.contains("name");
             let is_comment = capture_name.contains("comment");
             let is_import = capture_name.contains("import") || capture_name.contains("require");
-            
+
             if is_name || is_comment || is_import {
                 let start_row = capture.node.start_position().row;
                 let end_row = capture.node.end_position().row;
-                
+
                 if start_row >= lines.len() {
                     continue;
                 }
-                
+
                 // Ensure end_row is within bounds
-                let actual_end_row = if end_row < lines.len() { end_row } else { lines.len() - 1 };
-                
+                let actual_end_row = if end_row < lines.len() {
+                    end_row
+                } else {
+                    lines.len() - 1
+                };
+
                 if start_row > actual_end_row {
-                     continue;
+                    continue;
                 }
 
                 let selected_lines = &lines[start_row..=actual_end_row];
                 let chunk_content = selected_lines.join("\n");
-                
+
                 captured_chunks.push(Chunk {
                     content: chunk_content,
                     start_row,
@@ -74,7 +84,10 @@ pub fn compress_content(content: &str, extension: &str) -> Result<String> {
     // Filter duplicated chunks (keep longest for same start row)
     let mut chunks_by_start_row: HashMap<usize, Vec<Chunk>> = HashMap::new();
     for chunk in captured_chunks {
-        chunks_by_start_row.entry(chunk.start_row).or_default().push(chunk);
+        chunks_by_start_row
+            .entry(chunk.start_row)
+            .or_default()
+            .push(chunk);
     }
 
     let mut filtered_chunks: Vec<Chunk> = Vec::new();
@@ -84,7 +97,7 @@ pub fn compress_content(content: &str, extension: &str) -> Result<String> {
             filtered_chunks.push(best_chunk);
         }
     }
-    
+
     filtered_chunks.sort_by(|a, b| a.start_row.cmp(&b.start_row));
 
     // Merge adjacent chunks
@@ -147,13 +160,13 @@ fn other() {
 }
 "#;
         let compressed = compress_content(content, "rs").unwrap();
-        
+
         assert!(compressed.contains("fn main() {"));
         // println! is a macro invocation, so it is preserved
-        assert!(compressed.contains("println!")); 
+        assert!(compressed.contains("println!"));
         // let statement is not captured, so it should be removed
         assert!(!compressed.contains("let x = 1;"));
-        
+
         assert!(compressed.contains("fn other() {"));
         assert!(compressed.contains("⋮----"));
         assert!(compressed.contains("// This is a comment"));
@@ -170,13 +183,13 @@ class MyClass:
         pass
 "#;
         let compressed = compress_content(content, "py").unwrap();
-        
+
         assert!(compressed.contains("def my_func():"));
         // print is a call, preserved
         assert!(compressed.contains("print(\"Hello\")"));
         // pass is not captured, removed
         assert!(!compressed.contains("pass"));
-        
+
         assert!(compressed.contains("class MyClass:"));
         assert!(compressed.contains("def method(self):"));
     }

@@ -1,8 +1,8 @@
 // repomix-rust/src/config/tests.rs
 #[cfg(test)]
 mod tests {
-    use crate::config::schema::{TokenCountTreeConfig, RepomixConfig, OutputConfig};
     use crate::cli::Cli;
+    use crate::config::schema::{OutputConfig, RepomixConfig, TokenCountTreeConfig};
     use clap::Parser;
     use proptest::prelude::*;
     use serde_json;
@@ -45,7 +45,10 @@ mod tests {
             "tokenCountTree": 50000
         }"#;
         let config: OutputConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(config.token_count_tree, TokenCountTreeConfig::Threshold(50000));
+        assert_eq!(
+            config.token_count_tree,
+            TokenCountTreeConfig::Threshold(50000)
+        );
     }
 
     #[test]
@@ -56,7 +59,7 @@ mod tests {
 
         // Simulate --no-file-summary
         let cli = Cli::parse_from(&["repomix", "--no-file-summary"]);
-        
+
         // The parse_from above actually sets the flag!
         // Since we changed `no-*` flags to be bool and SetTrue, presence means true.
         assert_eq!(cli.no_file_summary, true);

@@ -1,9 +1,9 @@
+use serde_json::{json, Value};
 use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use tempfile::TempDir;
-use serde_json::{json, Value};
 
 #[test]
 fn test_mcp_server_pack_codebase() {
@@ -45,7 +45,7 @@ fn test_mcp_server_pack_codebase() {
 
         let mut line = String::new();
         reader.read_line(&mut line).unwrap();
-        
+
         if line.is_empty() {
             panic!("Server closed connection unexpectedly");
         }
@@ -65,24 +65,31 @@ fn test_mcp_server_pack_codebase() {
     assert!(tools.iter().any(|t| t["name"] == "pack_codebase"));
 
     // 7. Test tools/call pack_codebase
-    let call_res = send_request("tools/call", Some(json!({
-        "name": "pack_codebase",
-        "arguments": {
-            "directory": input_dir.to_str().unwrap(),
-            "style": "plain"
-        }
-    })));
+    let call_res = send_request(
+        "tools/call",
+        Some(json!({
+            "name": "pack_codebase",
+            "arguments": {
+                "directory": input_dir.to_str().unwrap(),
+                "style": "plain"
+            }
+        })),
+    );
 
     if let Some(err) = call_res.get("error") {
         if !err.is_null() {
             panic!("Tool call failed: {:?}", err);
         }
     }
-    
+
     let content = &call_res["result"]["content"][0]["text"];
-    assert!(content.is_string(), "Content text not found or not a string: {:?}", call_res);
+    assert!(
+        content.is_string(),
+        "Content text not found or not a string: {:?}",
+        call_res
+    );
     let text = content.as_str().unwrap();
-    
+
     assert!(text.contains("Hello MCP"));
     assert!(text.contains("test.txt"));
 

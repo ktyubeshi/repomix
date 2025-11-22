@@ -64,7 +64,7 @@ fn run_node_repomix_files(input_dir: &Path) -> HashSet<String> {
 // Run rust repomix and extract file paths
 fn run_rust_repomix_files(input_dir: &Path) -> HashSet<String> {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    
+
     // Try release binary first, then debug
     let bin_path = if repo_root.join("target/release/repomix-rs").exists() {
         repo_root.join("target/release/repomix-rs")
@@ -74,7 +74,7 @@ fn run_rust_repomix_files(input_dir: &Path) -> HashSet<String> {
 
     let output_path = input_dir.join("rust_output.xml");
     let config_path = input_dir.join("repomix.config.json");
-    
+
     let config_content = r#"{
         "output": {
             "fileSummary": false,
@@ -107,13 +107,13 @@ fn run_rust_repomix_files(input_dir: &Path) -> HashSet<String> {
 
     let content = fs::read_to_string(&output_path).expect("Failed to read rust output");
     let paths = extract_file_paths(&content);
-    
+
     if paths.is_empty() {
         println!("Rust found NO files in {:?}", input_dir);
         // println!("Rust stdout: {}", String::from_utf8_lossy(&output.stdout));
         // println!("Rust stderr: {}", String::from_utf8_lossy(&output.stderr));
     }
-    
+
     paths
 }
 fn extract_file_paths(content: &str) -> HashSet<String> {
@@ -154,13 +154,13 @@ proptest! {
         let dir = TempDir::new().unwrap();
         let input_dir = dir.path().join("input");
         fs::create_dir(&input_dir).unwrap();
-        
+
         // Setup files
         let mut created_files: HashSet<String> = HashSet::new();
         for (path, content) in &files {
             // normalize path to prevent creation errors (e.g. ending with / or empty parts)
             if path.ends_with('/') || path.contains("//") { continue; }
-            
+
             let full_path = input_dir.join(path);
 
             if has_file_ancestor(&created_files, &full_path) {
@@ -192,15 +192,15 @@ proptest! {
                 fs::write(&p, "content").unwrap();
             }
         }
-        
+
         // Create a dummy .gitignore to test ignore logic too?
         // For now let's test default behavior without custom .gitignore
-        
+
         let node_files = run_node_repomix_files(&input_dir);
         let rust_files = run_rust_repomix_files(&input_dir);
-        
+
         // Filter out the output files themselves if they ended up in the set (though run functions put them in input_dir)
-        // Wait, run functions put output files INSIDE input_dir? 
+        // Wait, run functions put output files INSIDE input_dir?
         // "let output_path = input_dir.join(\"node_output.xml\");" -> Yes.
         // Repomix by default ignores its own output, but let's be safe and filter.
         let filter_outputs = |set: HashSet<String>| -> HashSet<String> {
@@ -208,14 +208,14 @@ proptest! {
                 .filter(|p| !p.ends_with("node_output.xml") && !p.ends_with("rust_output.xml") && !p.ends_with("repomix.config.json"))
                 .collect()
         };
-        
+
         let node_files = filter_outputs(node_files);
         let rust_files = filter_outputs(rust_files);
 
         // Compare
         let node_only: Vec<_> = node_files.difference(&rust_files).collect();
         let rust_only: Vec<_> = rust_files.difference(&node_files).collect();
-        
+
         if !node_only.is_empty() || !rust_only.is_empty() {
              // List all files in input dir for debugging context
             let mut all_files_on_disk = Vec::new();
@@ -227,7 +227,7 @@ proptest! {
                 }
             }
             all_files_on_disk.sort();
-            
+
             panic!(
                 "File collection mismatch!\n\x20Node only ({:?}): {:?}\n\x20Rust only ({:?}): {:?}\n\x20All files on disk: {:#?}",
                 node_only.len(), node_only,

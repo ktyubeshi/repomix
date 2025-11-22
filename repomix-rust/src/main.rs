@@ -54,11 +54,12 @@ async fn main() -> Result<()> {
     let mut config = config::load::load_file_config(
         &std::env::current_dir().context("Failed to get current working directory")?,
         args.config.as_ref().map(|p| p.as_path()),
-    ).await.context("Failed to load configuration")?;
+    )
+    .await
+    .context("Failed to load configuration")?;
 
     config = config.merge_with_cli(&args);
     config.stdin_file_paths = stdin_paths;
-
 
     // Run packing
     println!("\n📦 Repomix v{}\n", env!("CARGO_PKG_VERSION"));
@@ -90,7 +91,10 @@ async fn main() -> Result<()> {
     println!("🔎 Security Check:");
     println!("──────────────────");
     if result.has_secrets {
-        println!("⚠ {} suspicious file(s) detected and excluded:", result.suspicious_files.len());
+        println!(
+            "⚠ {} suspicious file(s) detected and excluded:",
+            result.suspicious_files.len()
+        );
         for file in &result.suspicious_files {
             println!("  - {}", file.display());
         }
@@ -115,7 +119,10 @@ async fn main() -> Result<()> {
         println!(
             "     Security: {}",
             if result.has_secrets {
-                format!("⚠ {} suspicious file(s) detected and excluded", result.suspicious_files.len())
+                format!(
+                    "⚠ {} suspicious file(s) detected and excluded",
+                    result.suspicious_files.len()
+                )
             } else {
                 "✔ No suspicious files detected".to_string()
             }
@@ -129,7 +136,10 @@ async fn main() -> Result<()> {
         println!(
             "     Security: {}",
             if result.has_secrets {
-                format!("⚠ {} suspicious file(s) detected and excluded", result.suspicious_files.len())
+                format!(
+                    "⚠ {} suspicious file(s) detected and excluded",
+                    result.suspicious_files.len()
+                )
             } else {
                 "✔ No suspicious files detected".to_string()
             }
@@ -140,7 +150,10 @@ async fn main() -> Result<()> {
         println!(
             "     Security: {}",
             if result.has_secrets {
-                format!("⚠ {} suspicious file(s) detected and excluded", result.suspicious_files.len())
+                format!(
+                    "⚠ {} suspicious file(s) detected and excluded",
+                    result.suspicious_files.len()
+                )
             } else {
                 "✔ No suspicious files detected".to_string()
             }

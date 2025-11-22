@@ -49,11 +49,14 @@ fn format_xml_full(
     output.push_str("</file_format>\n\n");
 
     output.push_str("<usage_guidelines>\n");
-    output.push_str("- This file should be treated as read-only. Any changes should be made to the\n");
+    output.push_str(
+        "- This file should be treated as read-only. Any changes should be made to the\n",
+    );
     output.push_str("  original repository files, not this packed version.\n");
     output.push_str("- When processing this file, use the file path to distinguish\n");
     output.push_str("  between different files in the repository.\n");
-    output.push_str("- Be aware that this file may contain sensitive information. Handle it with\n");
+    output
+        .push_str("- Be aware that this file may contain sensitive information. Handle it with\n");
     output.push_str("  the same level of security as you would the original repository.\n");
     if config.output.header_text.is_some() {
         output.push_str("- Pay special attention to the Repository Description. These contain important context and guidelines specific to this project.\n");
@@ -124,7 +127,7 @@ fn format_xml_full(
             }
             output.push_str("</git_diff_work_tree>\n");
         }
-        
+
         if let Ok(diff) = crate::core::git::get_git_diff(std::path::Path::new("."), true) {
             output.push_str("<git_diff_staged>\n");
             if !diff.is_empty() {
@@ -142,7 +145,9 @@ fn format_xml_full(
     if config.output.git.include_logs {
         let max_commits = config.output.git.include_logs_count;
         output.push_str("<git_logs>\n");
-        if let Ok(commits) = crate::core::git::get_git_log(std::path::Path::new("."), max_commits as usize) {
+        if let Ok(commits) =
+            crate::core::git::get_git_log(std::path::Path::new("."), max_commits as usize)
+        {
             for commit in commits {
                 output.push_str("<git_log_commit>\n");
                 output.push_str(&format!("<date>{}</date>\n", commit.date));
@@ -211,19 +216,28 @@ fn generate_header(config: &RepomixConfig) -> String {
         ));
     }
     if config.output.compress {
-        processing_notes.push("content has been compressed (code blocks are separated by ⋮---- delimiter)".to_string());
+        processing_notes.push(
+            "content has been compressed (code blocks are separated by ⋮---- delimiter)"
+                .to_string(),
+        );
     }
     if !config.security.enable_security_check {
         processing_notes.push("security check has been disabled".to_string());
     }
 
     let processing_info = if !processing_notes.is_empty() {
-        format!("The content has been processed where {}.", processing_notes.join(", "))
+        format!(
+            "The content has been processed where {}.",
+            processing_notes.join(", ")
+        )
     } else {
         String::new()
     };
 
-    let mut result = format!("{}, combined into a single document by Repomix.", description);
+    let mut result = format!(
+        "{}, combined into a single document by Repomix.",
+        description
+    );
     if !processing_info.is_empty() {
         result.push('\n');
         result.push_str(&processing_info);
@@ -252,10 +266,16 @@ fn generate_summary_notes(config: &RepomixConfig) -> String {
     ];
 
     if !config.include.is_empty() {
-        notes.push(format!("- Only files matching these patterns are included: {}", config.include.join(", ")));
+        notes.push(format!(
+            "- Only files matching these patterns are included: {}",
+            config.include.join(", ")
+        ));
     }
     if !config.ignore.custom_patterns.is_empty() {
-        notes.push(format!("- Files matching these patterns are excluded: {}", config.ignore.custom_patterns.join(", ")));
+        notes.push(format!(
+            "- Files matching these patterns are excluded: {}",
+            config.ignore.custom_patterns.join(", ")
+        ));
     }
     if config.ignore.use_gitignore {
         notes.push("- Files matching patterns in .gitignore are excluded".to_string());
@@ -280,17 +300,26 @@ fn generate_summary_notes(config: &RepomixConfig) -> String {
         ));
     }
     if config.output.compress {
-        notes.push("- Content has been compressed - code blocks are separated by ⋮---- delimiter".to_string());
+        notes.push(
+            "- Content has been compressed - code blocks are separated by ⋮---- delimiter"
+                .to_string(),
+        );
     }
     if config.output.truncate_base64 {
         notes.push("- Long base64 data strings (e.g., data:image/png;base64,...) have been truncated to reduce token count".to_string());
     }
     if !config.security.enable_security_check {
-        notes.push("- Security check has been disabled - content may contain sensitive information".to_string());
+        notes.push(
+            "- Security check has been disabled - content may contain sensitive information"
+                .to_string(),
+        );
     }
 
     if config.output.git.sort_by_changes {
-        notes.push("- Files are sorted by Git change count (files with more changes are at the bottom)".to_string());
+        notes.push(
+            "- Files are sorted by Git change count (files with more changes are at the bottom)"
+                .to_string(),
+        );
     }
 
     if config.output.git.include_diffs {
@@ -299,7 +328,10 @@ fn generate_summary_notes(config: &RepomixConfig) -> String {
 
     if config.output.git.include_logs {
         let max_commits = config.output.git.include_logs_count;
-        notes.push(format!("- Git logs ({} commits) are included to show development patterns", max_commits));
+        notes.push(format!(
+            "- Git logs ({} commits) are included to show development patterns",
+            max_commits
+        ));
     }
 
     notes.join("\n")
@@ -373,20 +405,23 @@ where
             }
             let name = path_parts[0];
             let is_last = path_parts.len() == 1;
-            
-            let entry = self.children.entry(name.to_string()).or_insert_with(|| Node::new(!is_last));
+
+            let entry = self
+                .children
+                .entry(name.to_string())
+                .or_insert_with(|| Node::new(!is_last));
             // If we are inserting a file, ensure the node is marked as not a dir (though it might have been created as a dir if we saw a longer path before?)
             // Actually, in repomix, a path is either a file or a dir.
             // If we see "a/b", "a" is a dir.
             // If we later see "a", that would be a conflict if "a" is a file.
             // But paths come from a file walker, so "a" and "a/b" won't coexist as file and dir.
             // However, if we see "a/b" and then "a/c", "a" is dir.
-            
+
             if !is_last {
                 entry.is_dir = true;
                 entry.insert(&path_parts[1..]);
             } else {
-                // It's a leaf in this path. 
+                // It's a leaf in this path.
                 // If it was already a dir, it stays a dir? (e.g. explicitly included dir?)
                 // But here input `paths` are files.
                 // So if it's a leaf, it's a file.
@@ -397,9 +432,9 @@ where
 
         fn to_string(&self, prefix: &str) -> String {
             let mut result = String::new();
-            
+
             let mut children: Vec<(&String, &Node)> = self.children.iter().collect();
-            
+
             // Sort: directories first, then files. Both alphabetical.
             children.sort_by(|(name_a, node_a), (name_b, node_b)| {
                 if node_a.is_dir == node_b.is_dir {
@@ -439,4 +474,3 @@ where
 
     root.to_string("").trim_end().to_string()
 }
-

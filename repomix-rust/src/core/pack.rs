@@ -55,7 +55,11 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                 if config.security.enable_security_check {
                     if let Ok(Some(result)) = security::scan_content(&absolute_path, &content) {
                         for secret in result.secrets {
-                            tracing::warn!("Potential secret found in {:?}: {}", absolute_path, secret);
+                            tracing::warn!(
+                                "Potential secret found in {:?}: {}",
+                                absolute_path,
+                                secret
+                            );
                         }
                         suspicious_files.lock().unwrap().push(relative_path);
                         return Ok(());
@@ -64,7 +68,10 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
 
                 // Compression
                 let final_content = if config.output.compress {
-                    let ext = absolute_path.extension().and_then(|s| s.to_str()).unwrap_or("");
+                    let ext = absolute_path
+                        .extension()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("");
                     match compress::compress_content(&content, ext) {
                         Ok(c) => {
                             tracing::debug!(
@@ -87,10 +94,10 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                 // Count tokens immediately (parallelized)
                 let token_count = metrics::count_tokens(&final_content, &enc).unwrap_or(0);
                 let char_count = final_content.chars().count();
-                
+
                 total_chars.fetch_add(char_count, std::sync::atomic::Ordering::Relaxed);
                 total_bytes.fetch_add(final_content.len(), std::sync::atomic::Ordering::Relaxed);
-                
+
                 {
                     let mut stats = file_stats.lock().unwrap();
                     stats.push(FileStats {

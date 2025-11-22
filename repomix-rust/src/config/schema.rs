@@ -1,10 +1,9 @@
 // repomix-rust/src/config/schema.rs
 
+use crate::cli::{Cli, OutputStyleCli};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use crate::cli::{Cli, OutputStyleCli};
-
 
 // --- Enums ---
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -34,12 +33,15 @@ fn true_default() -> bool {
     true
 }
 
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
 impl Default for RepomixOutputStyle {
     fn default() -> Self {
         RepomixOutputStyle::Xml
     }
 }
-
 
 impl std::fmt::Display for RepomixOutputStyle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -60,7 +62,10 @@ impl std::fmt::Display for RepomixOutputStyle {
 pub fn default_file_path_map() -> HashMap<RepomixOutputStyle, String> {
     let mut map = HashMap::new();
     map.insert(RepomixOutputStyle::Xml, "repomix-output.xml".to_string());
-    map.insert(RepomixOutputStyle::Markdown, "repomix-output.md".to_string());
+    map.insert(
+        RepomixOutputStyle::Markdown,
+        "repomix-output.md".to_string(),
+    );
     map.insert(RepomixOutputStyle::Json, "repomix-output.json".to_string());
     map.insert(RepomixOutputStyle::Plain, "repomix-output.txt".to_string());
     map
@@ -114,7 +119,6 @@ impl Default for GitOutputConfig {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OutputConfig {
     #[serde(rename = "filePath", default = "OutputConfig::default_file_path")]
@@ -147,7 +151,11 @@ pub struct OutputConfig {
     pub truncate_base64: bool,
     #[serde(rename = "copyToClipboard", default)]
     pub copy_to_clipboard: bool,
-    #[serde(rename = "includeEmptyDirectories", default)]
+    #[serde(
+        rename = "includeEmptyDirectories",
+        default,
+        skip_serializing_if = "is_false"
+    )]
     pub include_empty_directories: bool,
     #[serde(rename = "includeFullDirectoryStructure", default)]
     pub include_full_directory_structure: bool,
@@ -155,7 +163,7 @@ pub struct OutputConfig {
     pub token_count_tree: TokenCountTreeConfig,
     #[serde(default)]
     pub git: GitOutputConfig,
-    
+
     // CLI-specific output options, like `stdout`
     pub stdout: Option<bool>,
 }
@@ -189,9 +197,16 @@ impl Default for OutputConfig {
 
 impl OutputConfig {
     fn default_file_path() -> Option<String> {
-        Some(default_file_path_map().get(&RepomixOutputStyle::default()).cloned().unwrap_or_default())
+        Some(
+            default_file_path_map()
+                .get(&RepomixOutputStyle::default())
+                .cloned()
+                .unwrap_or_default(),
+        )
     }
-    fn default_style() -> RepomixOutputStyle { RepomixOutputStyle::default() }
+    fn default_style() -> RepomixOutputStyle {
+        RepomixOutputStyle::default()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -216,7 +231,6 @@ impl Default for IgnoreConfig {
         }
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SecurityConfig {
@@ -395,7 +409,7 @@ impl RepomixConfig {
         }
         // Token count tree flags
         if cli.no_token_count_tree {
-             self.output.token_count_tree = TokenCountTreeConfig::Bool(false);
+            self.output.token_count_tree = TokenCountTreeConfig::Bool(false);
         } else if let Some(value) = &cli.token_count_tree {
             if value == "true" {
                 self.output.token_count_tree = TokenCountTreeConfig::Bool(true);
@@ -405,7 +419,7 @@ impl RepomixConfig {
                 self.output.token_count_tree = TokenCountTreeConfig::Threshold(num);
             } else {
                 // If it's not a number or boolean, treat as text? Or maybe invalid?
-                // For now, let's assume it's text or error. 
+                // For now, let's assume it's text or error.
                 // Schema supports Text(String), so:
                 self.output.token_count_tree = TokenCountTreeConfig::Text(value.clone());
             }
@@ -420,7 +434,6 @@ impl RepomixConfig {
         if cli.stdout {
             self.output.stdout = Some(true);
         }
-        
 
         // Git output overrides
         // Sort by changes flags
@@ -453,7 +466,9 @@ impl RepomixConfig {
             self.include.extend(cli.include_patterns.clone());
         }
         if !cli.ignore_patterns.is_empty() {
-            self.ignore.custom_patterns.extend(cli.ignore_patterns.clone());
+            self.ignore
+                .custom_patterns
+                .extend(cli.ignore_patterns.clone());
         }
         // Use gitignore flags
         if cli.no_use_gitignore {
