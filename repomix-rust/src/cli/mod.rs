@@ -225,7 +225,7 @@ pub struct Cli {
     pub quiet: bool,
 
     /// Run as MCP server
-    #[arg(long)]
+    #[arg(long = "mcp", alias = "server")]
     pub server: bool,
 
     /// Initialize a new configuration file

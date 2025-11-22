@@ -1,6 +1,7 @@
 use crate::config::{default_ignore::DEFAULT_IGNORE_PATTERNS, schema::RepomixConfig};
 use anyhow::{bail, Context, Result};
 mod binary_extensions;
+pub mod process;
 use self::binary_extensions::BINARY_EXTENSIONS;
 use content_inspector::{inspect, ContentType};
 use globset::{Glob, GlobSet, GlobSetBuilder};

@@ -1,4 +1,6 @@
 use anyhow::{Context, Result};
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::process::Command;
 
 pub struct GitCommit {
@@ -74,4 +76,37 @@ pub fn get_git_log(dir: &std::path::Path, max_commits: usize) -> Result<Vec<GitC
     }
 
     Ok(commits)
+}
+
+pub fn get_file_change_counts(
+    dir: &std::path::Path,
+    max_commits: usize,
+) -> Result<HashMap<PathBuf, u32>> {
+    let output = Command::new("git")
+        .args([
+            "log",
+            &format!("-n{}", max_commits),
+            "--name-only",
+            "--pretty=format:",
+        ])
+        .current_dir(dir)
+        .output()
+        .context("Failed to execute git log for change counts")?;
+
+    if !output.status.success() {
+        return Err(anyhow::anyhow!("git log failed"));
+    }
+
+    let mut counts = HashMap::new();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        let normalized = trimmed.replace('\\', "/");
+        *counts.entry(PathBuf::from(normalized)).or_insert(0) += 1;
+    }
+
+    Ok(counts)
 }

@@ -1,15 +1,24 @@
 use proptest::prelude::*;
 use std::collections::HashSet;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::Path;
 use std::process::Command;
 use tempfile::TempDir;
 
 // Helper to ensure parent directories exist
-fn ensure_parent_exists(path: &Path) {
+fn ensure_parent_exists(path: &Path) -> bool {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).unwrap();
+        if parent.is_file() {
+            return false;
+        }
+        if let Err(err) = fs::create_dir_all(parent) {
+            if err.kind() != ErrorKind::AlreadyExists {
+                return false;
+            }
+        }
     }
+    true
 }
 
 fn has_file_ancestor(existing_files: &HashSet<String>, path: &Path) -> bool {
@@ -167,7 +176,9 @@ proptest! {
                 continue;
             }
 
-            ensure_parent_exists(&full_path);
+            if !ensure_parent_exists(&full_path) {
+                continue;
+            }
             if fs::write(&full_path, content).is_ok() {
                 created_files.insert(path.replace('\\', "/"));
             }
@@ -184,7 +195,9 @@ proptest! {
         ];
         for extra in extras {
             let p = input_dir.join(extra);
-            ensure_parent_exists(&p);
+            if !ensure_parent_exists(&p) {
+                continue;
+            }
             // Write empty content for "empty" files
             if extra.contains("empty") {
                 fs::write(&p, "").unwrap();

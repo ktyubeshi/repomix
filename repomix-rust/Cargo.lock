@@ -1333,6 +1333,7 @@ dependencies = [
  "indicatif",
  "json5",
  "lazy_static",
+ "once_cell",
  "path-clean",
  "pathdiff",
  "predicates",

@@ -1,5 +1,8 @@
 use crate::config::schema::RepomixConfig;
+use crate::core::metrics::token_tree::{to_json_value, TokenTreeNode};
+use crate::core::pack::FileStats;
 use anyhow::Result;
+use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -7,25 +10,31 @@ pub struct RepomixOutput {
     pub content: String,
 }
 
-pub fn format(config: &RepomixConfig, files: &HashMap<PathBuf, String>) -> Result<RepomixOutput> {
+pub struct FormatContext<'a> {
+    pub files: &'a HashMap<PathBuf, String>,
+    pub sorted_paths: &'a [PathBuf],
+    pub top_files: &'a [FileStats],
+    pub token_count_tree: Option<&'a TokenTreeNode>,
+    pub token_count: usize,
+    pub total_chars: usize,
+}
+
+pub fn format(config: &RepomixConfig, ctx: FormatContext) -> Result<RepomixOutput> {
     let mut output = String::new();
     let style = config.output.style.to_string(); // Get String
     let style_str = style.as_str(); // Get &str
 
     match style_str {
-        "markdown" => format_markdown(&mut output, files, config),
-        "plain" => format_plain(&mut output, files, config),
-        _ => format_xml_full(&mut output, files, config)?,
+        "markdown" => format_markdown(&mut output, &ctx, config),
+        "plain" => format_plain(&mut output, &ctx, config),
+        "json" => format_json(&mut output, &ctx, config)?,
+        _ => format_xml_full(&mut output, &ctx, config)?,
     }
 
     Ok(RepomixOutput { content: output })
 }
 
-fn format_xml_full(
-    output: &mut String,
-    files: &HashMap<PathBuf, String>,
-    config: &RepomixConfig,
-) -> Result<()> {
+fn format_xml_full(output: &mut String, ctx: &FormatContext, config: &RepomixConfig) -> Result<()> {
     output.push_str(&generate_header(config));
     output.push_str("\n\n");
 
@@ -38,32 +47,13 @@ fn format_xml_full(
     output.push_str("</purpose>\n\n");
 
     output.push_str("<file_format>\n");
-    output.push_str("The content is organized as follows:\n");
-    output.push_str("1. This summary section\n");
-    output.push_str("2. Repository information\n");
-    output.push_str("3. Directory structure\n");
-    output.push_str("4. Repository files (if enabled)\n");
-    output.push_str("5. Multiple file entries, each consisting of:\n");
-    output.push_str("  - File path as an attribute\n");
-    output.push_str("  - Full contents of the file\n");
+    output.push_str(&generate_summary_file_format_text());
+    output.push('\n');
     output.push_str("</file_format>\n\n");
 
     output.push_str("<usage_guidelines>\n");
-    output.push_str(
-        "- This file should be treated as read-only. Any changes should be made to the\n",
-    );
-    output.push_str("  original repository files, not this packed version.\n");
-    output.push_str("- When processing this file, use the file path to distinguish\n");
-    output.push_str("  between different files in the repository.\n");
-    output
-        .push_str("- Be aware that this file may contain sensitive information. Handle it with\n");
-    output.push_str("  the same level of security as you would the original repository.\n");
-    if config.output.header_text.is_some() {
-        output.push_str("- Pay special attention to the Repository Description. These contain important context and guidelines specific to this project.\n");
-    }
-    if config.output.instruction_file_path.is_some() {
-        output.push_str("- Pay special attention to the Repository Instruction. These contain important context and guidelines specific to this project.\n");
-    }
+    output.push_str(&generate_summary_usage_guidelines(config));
+    output.push('\n');
     output.push_str("</usage_guidelines>\n\n");
 
     output.push_str("<notes>\n");
@@ -85,7 +75,7 @@ fn format_xml_full(
     // Directory Structure
     if config.output.directory_structure {
         output.push_str("<directory_structure>\n");
-        let structure = generate_directory_structure(files.keys());
+        let structure = generate_directory_structure(ctx.sorted_paths.iter());
         output.push_str(&structure);
         output.push_str("\n</directory_structure>\n\n");
     }
@@ -94,10 +84,8 @@ fn format_xml_full(
     if config.output.files {
         output.push_str("<files>\n");
         output.push_str("This section contains the contents of the repository's files.\n\n");
-        let mut paths: Vec<_> = files.keys().collect();
-        paths.sort();
-        for path in paths {
-            let content = files.get(path).unwrap();
+        for path in ctx.sorted_paths {
+            let content = ctx.files.get(path).unwrap();
             output.push_str(&format!("<file path=\"{}\">\n", path.display()));
             if config.output.show_line_numbers {
                 for (i, line) in content.lines().enumerate() {
@@ -337,12 +325,156 @@ fn generate_summary_notes(config: &RepomixConfig) -> String {
     notes.join("\n")
 }
 
-fn format_markdown(output: &mut String, files: &HashMap<PathBuf, String>, config: &RepomixConfig) {
+fn generate_summary_file_format_text() -> String {
+    vec![
+        "The content is organized as follows:",
+        "1. This summary section",
+        "2. Repository information",
+        "3. Directory structure",
+        "4. Repository files (if enabled)",
+        "5. Multiple file entries, each consisting of:",
+        "  - File path as an attribute",
+        "  - Full contents of the file",
+    ]
+    .join("\n")
+}
+
+fn generate_summary_usage_guidelines(config: &RepomixConfig) -> String {
+    let mut guidelines = vec![
+        "- This file should be treated as read-only. Any changes should be made to the".to_string(),
+        "  original repository files, not this packed version.".to_string(),
+        "- When processing this file, use the file path to distinguish".to_string(),
+        "  between different files in the repository.".to_string(),
+        "- Be aware that this file may contain sensitive information. Handle it with".to_string(),
+        "  the same level of security as you would the original repository.".to_string(),
+    ];
+
+    if config.output.header_text.is_some() {
+        guidelines.push(
+            "- Pay special attention to the Repository Description. These contain important context and guidelines specific to this project."
+                .to_string(),
+        );
+    }
+    if config.output.instruction_file_path.is_some() {
+        guidelines.push(
+            "- Pay special attention to the Repository Instruction. These contain important context and guidelines specific to this project."
+                .to_string(),
+        );
+    }
+
+    guidelines.join("\n")
+}
+
+fn format_json(output: &mut String, ctx: &FormatContext, config: &RepomixConfig) -> Result<()> {
+    let mut root = Map::new();
+
+    if config.output.file_summary {
+        root.insert(
+            "fileSummary".to_string(),
+            json!({
+                "generationHeader": generate_header(config),
+                "purpose": generate_summary_purpose(config),
+                "fileFormat": generate_summary_file_format_text(),
+                "usageGuidelines": generate_summary_usage_guidelines(config),
+                "notes": generate_summary_notes(config),
+            }),
+        );
+    }
+
+    if let Some(header) = &config.output.header_text {
+        root.insert("userProvidedHeader".to_string(), json!(header));
+    }
+
+    if config.output.directory_structure {
+        root.insert(
+            "directoryStructure".to_string(),
+            json!(generate_directory_structure(ctx.sorted_paths.iter())),
+        );
+    }
+
+    if config.output.files {
+        let mut files = Map::new();
+        for path in ctx.sorted_paths {
+            if let Some(content) = ctx.files.get(path) {
+                files.insert(path.to_string_lossy().to_string(), json!(content));
+            }
+        }
+        root.insert("files".to_string(), Value::Object(files));
+    }
+
+    if config.output.git.include_diffs {
+        let mut diffs = Map::new();
+        if let Ok(diff) = crate::core::git::get_git_diff(std::path::Path::new("."), false) {
+            if !diff.is_empty() {
+                diffs.insert("workTree".to_string(), json!(diff));
+            }
+        }
+        if let Ok(diff) = crate::core::git::get_git_diff(std::path::Path::new("."), true) {
+            if !diff.is_empty() {
+                diffs.insert("staged".to_string(), json!(diff));
+            }
+        }
+        if !diffs.is_empty() {
+            root.insert("gitDiffs".to_string(), Value::Object(diffs));
+        }
+    }
+
+    if config.output.git.include_logs {
+        if let Ok(commits) = crate::core::git::get_git_log(
+            std::path::Path::new("."),
+            config.output.git.include_logs_count as usize,
+        ) {
+            let serialized: Vec<Value> = commits
+                .into_iter()
+                .map(|commit| {
+                    json!({
+                        "date": commit.date,
+                        "message": commit.message,
+                        "files": commit.files,
+                    })
+                })
+                .collect();
+            root.insert("gitLogs".to_string(), json!(serialized));
+        }
+    }
+
+    if let Some(instruction_path) = &config.output.instruction_file_path {
+        if let Ok(instruction) = std::fs::read_to_string(instruction_path) {
+            root.insert("instruction".to_string(), json!(instruction));
+        }
+    }
+
+    let mut metadata = Map::new();
+    metadata.insert("totalFiles".to_string(), json!(ctx.files.len()));
+    metadata.insert("totalTokens".to_string(), json!(ctx.token_count));
+    metadata.insert("totalChars".to_string(), json!(ctx.total_chars));
+    metadata.insert(
+        "topFiles".to_string(),
+        json!(ctx
+            .top_files
+            .iter()
+            .map(|file| {
+                json!({
+                    "path": file.path.to_string_lossy(),
+                    "tokenCount": file.token_count,
+                    "charCount": file.char_count,
+                })
+            })
+            .collect::<Vec<_>>()),
+    );
+    if let Some(tree) = ctx.token_count_tree {
+        metadata.insert("tokenCountTree".to_string(), to_json_value(tree));
+    }
+    root.insert("metadata".to_string(), Value::Object(metadata));
+
+    *output = serde_json::to_string_pretty(&root)?;
+    Ok(())
+}
+
+fn format_markdown(output: &mut String, ctx: &FormatContext, config: &RepomixConfig) {
     output.push_str("# Files\n\n");
-    let mut paths: Vec<_> = files.keys().collect();
-    paths.sort();
-    for path in paths {
-        let content = files.get(path).unwrap();
+    for path in ctx.sorted_paths {
+        let content = ctx.files.get(path).unwrap();
         output.push_str(&format!("## File: {}\n\n", path.display()));
 
         let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
@@ -362,11 +494,9 @@ fn format_markdown(output: &mut String, files: &HashMap<PathBuf, String>, config
     }
 }
 
-fn format_plain(output: &mut String, files: &HashMap<PathBuf, String>, config: &RepomixConfig) {
-    let mut paths: Vec<_> = files.keys().collect();
-    paths.sort();
-    for path in paths {
-        let content = files.get(path).unwrap();
+fn format_plain(output: &mut String, ctx: &FormatContext, config: &RepomixConfig) {
+    for path in ctx.sorted_paths {
+        let content = ctx.files.get(path).unwrap();
         output.push_str(&format!("File: {}\n", path.display()));
         output.push_str("================================================================\n");
         if config.output.show_line_numbers {

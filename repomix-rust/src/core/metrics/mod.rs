@@ -1,3 +1,5 @@
+pub mod token_tree;
+
 use anyhow::Result;
 use std::sync::{Arc, OnceLock};
 use tiktoken_rs::CoreBPE;
@@ -47,4 +49,3 @@ pub fn count_tokens(content: &str, encoding: &str) -> Result<usize> {
     let tokens = bpe.encode_ordinary(content);
     Ok(tokens.len())
 }
-

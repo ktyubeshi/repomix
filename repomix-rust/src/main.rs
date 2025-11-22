@@ -6,6 +6,8 @@ mod shared;
 use anyhow::{Context, Result};
 use clap::Parser;
 use cli::Cli;
+use config::schema::TokenCountTreeConfig;
+use core::metrics::token_tree::render_token_tree;
 use shared::logger;
 use std::path::Path;
 
@@ -60,6 +62,10 @@ async fn main() -> Result<()> {
 
     config = config.merge_with_cli(&args);
     config.stdin_file_paths = stdin_paths;
+    if config.cwd.as_os_str().is_empty() {
+        config.cwd =
+            std::env::current_dir().context("Failed to determine current working directory")?;
+    }
 
     // Run packing
     println!("\n📦 Repomix v{}\n", env!("CARGO_PKG_VERSION"));
@@ -69,12 +75,20 @@ async fn main() -> Result<()> {
     println!("✔ Packing completed successfully!\n");
 
     // Display top files
-    if !result.top_files.is_empty() {
-        println!("📈 Top 5 Files by Token Count:");
+    let top_files_len = config.output.top_files_length as usize;
+    if top_files_len > 0 && !result.top_files.is_empty() {
+        println!(
+            "📈 Top {} File{} by Token Count:",
+            top_files_len,
+            if top_files_len == 1 { "" } else { "s" }
+        );
         println!("──────────────────────────────");
         for (i, file_stat) in result.top_files.iter().enumerate() {
-            let percentage =
-                (file_stat.token_count as f64 / result.token_count as f64 * 100.0).round();
+            let percentage = if result.token_count > 0 {
+                (file_stat.token_count as f64 / result.token_count as f64 * 100.0).round()
+            } else {
+                0.0
+            };
             println!(
                 "{}. {} ({} tokens, {} chars, {}%)",
                 i + 1,
@@ -85,6 +99,25 @@ async fn main() -> Result<()> {
             );
         }
         println!();
+    }
+
+    if let Some(tree) = &result.token_count_tree {
+        if let Some(threshold) = token_tree_threshold(&config.output.token_count_tree) {
+            println!("🔢 Token Count Tree:");
+            println!("────────────────────");
+            if threshold > 0 {
+                println!("Showing entries with {}+ tokens:", threshold);
+            }
+            let lines = render_token_tree(tree, threshold);
+            if lines.is_empty() {
+                println!("No files found.");
+            } else {
+                for line in lines {
+                    println!("{line}");
+                }
+            }
+            println!();
+        }
     }
 
     // Security check
@@ -175,6 +208,15 @@ async fn main() -> Result<()> {
     println!("Your repository has been successfully packed.\n");
 
     Ok(())
+}
+
+fn token_tree_threshold(config_value: &TokenCountTreeConfig) -> Option<usize> {
+    match config_value {
+        TokenCountTreeConfig::Bool(false) => None,
+        TokenCountTreeConfig::Bool(true) => Some(0),
+        TokenCountTreeConfig::Threshold(n) => Some(*n as usize),
+        TokenCountTreeConfig::Text(_) => Some(0),
+    }
 }
 
 fn format_number(n: usize) -> String {
