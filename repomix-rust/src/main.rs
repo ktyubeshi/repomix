@@ -139,7 +139,7 @@ async fn main() -> Result<()> {
                     println!("{}", style("No files found.").dim());
                 } else {
                     for line in lines {
-                        println!("{}", style(line).dim());
+                        println!("{}", style(line).white());
                     }
                 }
                 println!();
@@ -232,7 +232,7 @@ async fn main() -> Result<()> {
             if config.output.git.include_diffs {
                 style("✔ Git diffs included").white()
             } else {
-                style("✖ No git diffs included").red()
+                style("✖ No git diffs included").dim()
             }
         );
         println!(
@@ -241,7 +241,7 @@ async fn main() -> Result<()> {
             if config.output.git.include_logs {
                 style("✔ Git logs included").white()
             } else {
-                style("✖ No git logs included").red()
+                style("✖ No git logs included").dim()
             }
         );
     }

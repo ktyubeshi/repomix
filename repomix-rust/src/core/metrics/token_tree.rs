@@ -126,7 +126,10 @@ fn render_node(
         };
         let line = format!(
             "{}{}{} ({} tokens)",
-            prefix, connector, file.name, file.tokens
+            prefix,
+            connector,
+            file.name,
+            format_number(file.tokens)
         );
         lines.push(line);
     }
@@ -136,7 +139,11 @@ fn render_node(
         let connector = if is_last { "└── " } else { "├── " };
         let line = format!(
             "{}{}{}{} ({} tokens)",
-            prefix, connector, name, "/", child.token_sum
+            prefix,
+            connector,
+            name,
+            "/",
+            format_number(child.token_sum)
         );
         lines.push(line);
 
@@ -152,6 +159,18 @@ fn render_node(
 
         render_node(child, &child_prefix, false, min_tokens, lines);
     }
+}
+
+fn format_number(n: usize) -> String {
+    let s = n.to_string();
+    let mut result = String::new();
+    for (i, c) in s.chars().rev().enumerate() {
+        if i > 0 && i % 3 == 0 {
+            result.push(',');
+        }
+        result.push(c);
+    }
+    result.chars().rev().collect()
 }
 
 #[cfg(test)]
