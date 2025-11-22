@@ -1,13 +1,17 @@
 use crate::cli::tui::{PromptResult, Tui};
 use crate::config::global_directory;
 use crate::config::schema::{default_file_path_map, RepomixConfig, RepomixOutputStyle};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use console::style;
 use pathdiff::diff_paths;
 use std::fs;
 use std::path::Path;
 
 pub fn run_init_action(root_dir: &Path, is_global: bool) -> Result<()> {
+    if !console::user_attended() {
+        bail!("Interactive mode is required for init command. Please run in a terminal.");
+    }
+
     let tui = Tui::new();
 
     tui.intro(&format!(
