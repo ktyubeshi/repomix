@@ -58,7 +58,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
                 if config.security.enable_security_check {
                     if let Ok(Some(result)) = security::scan_content(&absolute_path, &content) {
                         for secret in result.secrets {
-                            tracing::warn!(
+                            tracing::debug!(
                                 "Potential secret found in {:?}: {}",
                                 absolute_path,
                                 secret
