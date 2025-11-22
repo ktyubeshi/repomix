@@ -109,11 +109,11 @@ async fn main() -> Result<()> {
                     0.0
                 };
                 println!(
-                    "{} {}",
-                    style(format!("{}. ", i + 1)).white(),
+                    "{} {}{}",
+                    style(format!("{}.", i + 1)).white().bold(),
+                    style(file_stat.path.display()).white(),
                     style(format!(
-                        "{} ({} tokens, {} chars, {}%)",
-                        file_stat.path.display(),
+                        " ({} tokens, {} chars, {}%)",
                         format_number(file_stat.token_count),
                         format_number(file_stat.char_count),
                         percentage
@@ -126,7 +126,7 @@ async fn main() -> Result<()> {
 
         if let Some(tree) = &result.token_count_tree {
             if let Some(threshold) = token_tree_threshold(&config.output.token_count_tree) {
-                println!("{}", style("🔢 Token Count Tree:").white());
+                println!("{}", style("🔢 Token Count Tree:").white().bold());
                 println!("{}", style("────────────────────").dim());
                 if threshold > 0 {
                     println!(
@@ -183,7 +183,7 @@ async fn main() -> Result<()> {
         println!("\n");
 
         // Print summary
-        println!("{}", style("📊 Pack Summary:").white());
+        println!("{}", style("📊 Pack Summary:").white().bold());
         println!("{}", style("────────────────────").dim());
         println!(
             "  {} {}",
@@ -221,6 +221,7 @@ async fn main() -> Result<()> {
                     result.suspicious_files.len()
                 ))
                 .yellow()
+                .bold()
             } else {
                 style("✔ No suspicious files detected".to_string()).green()
             }
@@ -231,7 +232,7 @@ async fn main() -> Result<()> {
             if config.output.git.include_diffs {
                 style("✔ Git diffs included").white()
             } else {
-                style("✖ Git diffs not included").dim()
+                style("✖ No git diffs included").red()
             }
         );
         println!(
@@ -240,7 +241,7 @@ async fn main() -> Result<()> {
             if config.output.git.include_logs {
                 style("✔ Git logs included").white()
             } else {
-                style("✖ Git logs not included").dim()
+                style("✖ No git logs included").red()
             }
         );
     }
