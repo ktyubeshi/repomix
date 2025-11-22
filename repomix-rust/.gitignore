@@ -6,3 +6,6 @@ output*.*
 repomix-output.*
 dummy_secret.txt
 mcp_test.jsonl
+
+# Proptest regressions
+tests/*.proptest-regressions

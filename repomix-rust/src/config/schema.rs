@@ -396,8 +396,19 @@ impl RepomixConfig {
         // Token count tree flags
         if cli.no_token_count_tree {
              self.output.token_count_tree = TokenCountTreeConfig::Bool(false);
-        } else if cli.token_count_tree {
-            self.output.token_count_tree = TokenCountTreeConfig::Bool(true);
+        } else if let Some(value) = &cli.token_count_tree {
+            if value == "true" {
+                self.output.token_count_tree = TokenCountTreeConfig::Bool(true);
+            } else if value == "false" {
+                self.output.token_count_tree = TokenCountTreeConfig::Bool(false);
+            } else if let Ok(num) = value.parse::<u64>() {
+                self.output.token_count_tree = TokenCountTreeConfig::Threshold(num);
+            } else {
+                // If it's not a number or boolean, treat as text? Or maybe invalid?
+                // For now, let's assume it's text or error. 
+                // Schema supports Text(String), so:
+                self.output.token_count_tree = TokenCountTreeConfig::Text(value.clone());
+            }
         }
         // stdout is a simple bool, so it directly overrides
         // But wait, stdout in CLI is bool, default false.

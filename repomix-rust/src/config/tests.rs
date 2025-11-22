@@ -86,7 +86,7 @@ mod tests {
             file_summary in any::<bool>(),
             directory_structure in any::<bool>(),
             copy_to_clipboard in any::<bool>(),
-            token_count_tree in any::<bool>(),
+            // token_count_tree removed from here, tested separately
         ) {
             fn flag_args(flag: &str, no_flag: &str, enabled: bool) -> [String; 1] {
                 if enabled {
@@ -104,11 +104,6 @@ mod tests {
                 directory_structure,
             ));
             args.extend(flag_args("copy", "no-copy", copy_to_clipboard));
-            args.extend(flag_args(
-                "token-count-tree",
-                "no-token-count-tree",
-                token_count_tree,
-            ));
 
             let cli = Cli::parse_from(args);
             let merged = RepomixConfig::default().merge_with_cli(&cli);
@@ -116,7 +111,37 @@ mod tests {
             prop_assert_eq!(merged.output.file_summary, file_summary);
             prop_assert_eq!(merged.output.directory_structure, directory_structure);
             prop_assert_eq!(merged.output.copy_to_clipboard, copy_to_clipboard);
-            prop_assert_eq!(merged.output.token_count_tree, TokenCountTreeConfig::Bool(token_count_tree));
+        }
+
+        #[test]
+        fn merge_with_cli_token_count_tree(
+            enabled in any::<bool>(),
+            threshold in any::<Option<u64>>(),
+        ) {
+            let mut args = vec!["repomix".to_string()];
+            if !enabled {
+                args.push("--no-token-count-tree".to_string());
+            } else {
+                if let Some(val) = threshold {
+                    args.push(format!("--token-count-tree={}", val));
+                } else {
+                    args.push("--token-count-tree".to_string());
+                }
+            }
+
+            let cli = Cli::parse_from(args);
+            let merged = RepomixConfig::default().merge_with_cli(&cli);
+
+            if !enabled {
+                prop_assert_eq!(merged.output.token_count_tree, TokenCountTreeConfig::Bool(false));
+            } else {
+                if let Some(val) = threshold {
+                    prop_assert_eq!(merged.output.token_count_tree, TokenCountTreeConfig::Threshold(val));
+                } else {
+                    // Default missing value is "true" -> Bool(true)
+                    prop_assert_eq!(merged.output.token_count_tree, TokenCountTreeConfig::Bool(true));
+                }
+            }
         }
     }
 }

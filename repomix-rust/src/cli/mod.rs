@@ -131,8 +131,8 @@ pub struct Cli {
     pub no_include_full_directory_structure: bool,
 
     /// Enable token count tree display
-    #[arg(long)]
-    pub token_count_tree: bool,
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
+    pub token_count_tree: Option<String>,
     /// Disable token count tree display
     #[arg(long = "no-token-count-tree")]
     pub no_token_count_tree: bool,
