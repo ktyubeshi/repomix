@@ -48,18 +48,3 @@ pub fn count_tokens(content: &str, encoding: &str) -> Result<usize> {
     Ok(tokens.len())
 }
 
-/// Count tokens for multiple texts in batch.
-///
-/// This is more efficient than calling `count_tokens` multiple times
-/// as it reuses the same BPE encoder instance.
-pub fn count_tokens_batch<'a, I>(texts: I, encoding: &str) -> Result<Vec<usize>>
-where
-    I: IntoIterator<Item = &'a str>,
-{
-    let bpe = bpe_for(encoding);
-    let results: Vec<usize> = texts
-        .into_iter()
-        .map(|text| bpe.encode_ordinary(text).len())
-        .collect();
-    Ok(results)
-}
