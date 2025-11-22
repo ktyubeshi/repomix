@@ -8,6 +8,7 @@ use clap::Parser;
 use cli::Cli;
 use config::schema::TokenCountTreeConfig;
 use core::metrics::token_tree::render_token_tree;
+use console::style;
 use rustc_version_runtime::version as rustc_version;
 use shared::logger;
 
@@ -76,23 +77,31 @@ async fn main() -> Result<()> {
 
     // Run packing
     if show_human_output {
-        println!("\n📦 Repomix-rs v{}\n", env!("CARGO_PKG_VERSION"));
+        println!(
+            "\n{}\n",
+            style(format!("📦 Repomix-rs v{}", env!("CARGO_PKG_VERSION"))).dim()
+        );
     }
 
     let result = core::pack::pack(&config, &args.directories)?;
 
     if show_human_output {
-        println!("✔ Packing completed successfully!\n");
+        println!("{}", style("✔ Packing completed successfully!").green());
+        println!();
 
         // Display top files
         let top_files_len = config.output.top_files_length as usize;
         if top_files_len > 0 && !result.top_files.is_empty() {
             println!(
-                "📈 Top {} File{} by Token Count:",
-                top_files_len,
-                if top_files_len == 1 { "" } else { "s" }
+                "{}",
+                style(format!(
+                    "📈 Top {} File{} by Token Count:",
+                    top_files_len,
+                    if top_files_len == 1 { "" } else { "s" }
+                ))
+                .white()
             );
-            println!("──────────────────────────────");
+            println!("{}", style("──────────────────────────────").dim());
             for (i, file_stat) in result.top_files.iter().enumerate() {
                 let percentage = if result.token_count > 0 {
                     (file_stat.token_count as f64 / result.token_count as f64 * 100.0).round()
@@ -100,12 +109,16 @@ async fn main() -> Result<()> {
                     0.0
                 };
                 println!(
-                    "{}. {} ({} tokens, {} chars, {}%)",
-                    i + 1,
-                    file_stat.path.display(),
-                    format_number(file_stat.token_count),
-                    format_number(file_stat.char_count),
-                    percentage
+                    "{} {}",
+                    style(format!("{}. ", i + 1)).white(),
+                    style(format!(
+                        "{} ({} tokens, {} chars, {}%)",
+                        file_stat.path.display(),
+                        format_number(file_stat.token_count),
+                        format_number(file_stat.char_count),
+                        percentage
+                    ))
+                    .dim()
                 );
             }
             println!();
@@ -113,17 +126,20 @@ async fn main() -> Result<()> {
 
         if let Some(tree) = &result.token_count_tree {
             if let Some(threshold) = token_tree_threshold(&config.output.token_count_tree) {
-                println!("🔢 Token Count Tree:");
-                println!("────────────────────");
+                println!("{}", style("🔢 Token Count Tree:").white());
+                println!("{}", style("────────────────────").dim());
                 if threshold > 0 {
-                    println!("Showing entries with {}+ tokens:", threshold);
+                    println!(
+                        "{}",
+                        style(format!("Showing entries with {}+ tokens:", threshold)).dim()
+                    );
                 }
                 let lines = render_token_tree(tree, threshold);
                 if lines.is_empty() {
-                    println!("No files found.");
+                    println!("{}", style("No files found.").dim());
                 } else {
                     for line in lines {
-                        println!("{line}");
+                        println!("{}", style(line).dim());
                     }
                 }
                 println!();
@@ -131,62 +147,100 @@ async fn main() -> Result<()> {
         }
 
         // Security check
-        println!("🔎 Security Check:");
-        println!("──────────────────");
+        println!("{}", style("🔎 Security Check:").white());
+        println!("{}", style("──────────────────").dim());
         if result.has_secrets {
-            println!("{} suspicious file(s) detected and excluded from the output:", result.suspicious_files.len());
+            println!(
+                "{}",
+                style(format!(
+                    "{} suspicious file(s) detected and excluded from the output:",
+                    result.suspicious_files.len()
+                ))
+                .yellow()
+            );
             for (idx, file) in result.suspicious_files.iter().enumerate() {
-                println!("{}. {}", idx + 1, file.display());
+                println!(
+                    "{} {}",
+                    style(format!("{}. ", idx + 1)).white(),
+                    style(file.display()).white()
+                );
             }
-            println!("These files have been excluded from the output for security reasons.");
-            println!("Please review these files for potential sensitive information.");
+            println!(
+                "{}",
+                style("These files have been excluded from the output for security reasons.")
+                    .yellow()
+            );
+            println!(
+                "{}",
+                style("Please review these files for potential sensitive information.").yellow()
+            );
         } else {
-            println!("✔ No suspicious files detected.");
+            println!(
+                "{}",
+                style("✔ No suspicious files detected.").green()
+            );
         }
         println!("\n");
 
-    // Print summary
-    println!("📊 Pack Summary:");
-    println!("────────────────────");
-    println!("  Total Files: {} files", result.total_files);
-    println!(
-        " Total Tokens: {} tokens",
-        format_number(result.token_count)
-    );
-    println!("  Total Chars: {} chars", format_number(result.total_chars));
-    let output_target = if args.stdout {
-        "stdout".to_string()
-    } else if let Some(path) = &config.output.file_path {
-        path.clone()
-    } else {
-        "stdout".to_string()
-    };
-    println!("       Output: {}", output_target);
-    println!(
-        "     Security: {}",
-        if result.has_secrets {
-            format!(
-                "⚠ {} suspicious file(s) detected and excluded",
-                result.suspicious_files.len()
-            )
+        // Print summary
+        println!("{}", style("📊 Pack Summary:").white());
+        println!("{}", style("────────────────────").dim());
+        println!(
+            "  {} {}",
+            style("Total Files:").white(),
+            style(format!("{} files", result.total_files)).white()
+        );
+        println!(
+            " {} {}",
+            style("Total Tokens:").white(),
+            style(format!("{} tokens", format_number(result.token_count))).white()
+        );
+        println!(
+            "  {} {}",
+            style("Total Chars:").white(),
+            style(format!("{} chars", format_number(result.total_chars))).white()
+        );
+        let output_target = if args.stdout {
+            "stdout".to_string()
+        } else if let Some(path) = &config.output.file_path {
+            path.clone()
         } else {
-            "✔ No suspicious files detected".to_string()
-        }
-    );
-    println!(
-        "    Git Diffs: {}",
-        if config.output.git.include_diffs {
-            "✔ Git diffs included"
-        } else {
-                "✖ Git diffs not included"
+            "stdout".to_string()
+        };
+        println!(
+            "       {} {}",
+            style("Output:").white(),
+            style(output_target).white()
+        );
+        println!(
+            "     {} {}",
+            style("Security:").white(),
+            if result.has_secrets {
+                style(format!(
+                    "⚠ {} suspicious file(s) detected and excluded",
+                    result.suspicious_files.len()
+                ))
+                .yellow()
+            } else {
+                style("✔ No suspicious files detected".to_string()).green()
             }
         );
         println!(
-            "     Git Logs: {}",
-            if config.output.git.include_logs {
-                "✔ Git logs included"
+            "    {} {}",
+            style("Git Diffs:").white(),
+            if config.output.git.include_diffs {
+                style("✔ Git diffs included").white()
             } else {
-                "✖ Git logs not included"
+                style("✖ Git diffs not included").dim()
+            }
+        );
+        println!(
+            "     {} {}",
+            style("Git Logs:").white(),
+            if config.output.git.include_logs {
+                style("✔ Git logs included").white()
+            } else {
+                style("✖ Git logs not included").dim()
             }
         );
     }
@@ -214,14 +268,21 @@ async fn main() -> Result<()> {
             .set_text(&result.output)
             .context("Failed to copy to clipboard")?;
         if show_human_output {
-            println!("📋 Output copied to clipboard");
+            println!("{}", style("📋 Output copied to clipboard").white());
         }
     }
 
     if show_human_output {
-        println!("🎉 All Done!");
-        println!("Your repository has been successfully packed.\n");
-        println!("🚀 Repomix is now available in your browser! Try it at https://repomix.com");
+        println!("{}", style("🎉 All Done!").green());
+        println!(
+            "{}",
+            style("Your repository has been successfully packed.").white()
+        );
+        println!();
+        println!(
+            "💡 Repomix is now available in your browser! Try it at {}",
+            style("https://repomix.com").underlined()
+        );
     }
 
     Ok(())
