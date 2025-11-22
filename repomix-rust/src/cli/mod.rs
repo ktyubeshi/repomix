@@ -7,7 +7,6 @@ pub mod tui;
 #[derive(Parser, Debug)]
 #[command(name = "repomix")]
 #[command(about = "Pack your repository into a single AI-friendly file", long_about = None)]
-#[command(version)]
 pub struct Cli {
     /// List of directories to process
     #[arg(default_value = ".")]
@@ -219,6 +218,10 @@ pub struct Cli {
     /// Enable verbose logging
     #[arg(long)]
     pub verbose: bool,
+
+    /// Show version information and exit
+    #[arg(short = 'v', long)]
+    pub version: bool,
 
     /// Disable all output to stdout
     #[arg(long, conflicts_with = "verbose")]

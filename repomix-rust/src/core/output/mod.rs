@@ -19,6 +19,14 @@ pub struct FormatContext<'a> {
     pub total_chars: usize,
 }
 
+fn add_line_numbers(content: &str) -> String {
+    let mut numbered = String::new();
+    for (i, line) in content.lines().enumerate() {
+        numbered.push_str(&format!("{:4}: {}\n", i + 1, line));
+    }
+    numbered
+}
+
 pub fn format(config: &RepomixConfig, ctx: FormatContext) -> Result<RepomixOutput> {
     let mut output = String::new();
     let style = config.output.style.to_string(); // Get String
@@ -88,9 +96,7 @@ fn format_xml_full(output: &mut String, ctx: &FormatContext, config: &RepomixCon
             let content = ctx.files.get(path).unwrap();
             output.push_str(&format!("<file path=\"{}\">\n", path.display()));
             if config.output.show_line_numbers {
-                for (i, line) in content.lines().enumerate() {
-                    output.push_str(&format!("{:4}: {}\n", i + 1, line));
-                }
+                output.push_str(&add_line_numbers(content));
             } else {
                 output.push_str(content);
                 if !content.ends_with('\n') {
@@ -396,7 +402,12 @@ fn format_json(output: &mut String, ctx: &FormatContext, config: &RepomixConfig)
         let mut files = Map::new();
         for path in ctx.sorted_paths {
             if let Some(content) = ctx.files.get(path) {
-                files.insert(path.to_string_lossy().to_string(), json!(content));
+                let rendered = if config.output.show_line_numbers {
+                    add_line_numbers(content)
+                } else {
+                    content.to_string()
+                };
+                files.insert(path.to_string_lossy().to_string(), json!(rendered));
             }
         }
         root.insert("files".to_string(), Value::Object(files));
@@ -481,9 +492,7 @@ fn format_markdown(output: &mut String, ctx: &FormatContext, config: &RepomixCon
 
         output.push_str(&format!("```{}\n", ext));
         if config.output.show_line_numbers {
-            for (i, line) in content.lines().enumerate() {
-                output.push_str(&format!("{:4}: {}\n", i + 1, line));
-            }
+            output.push_str(&add_line_numbers(content));
         } else {
             output.push_str(content);
             if !content.ends_with('\n') {
@@ -500,9 +509,7 @@ fn format_plain(output: &mut String, ctx: &FormatContext, config: &RepomixConfig
         output.push_str(&format!("File: {}\n", path.display()));
         output.push_str("================================================================\n");
         if config.output.show_line_numbers {
-            for (i, line) in content.lines().enumerate() {
-                output.push_str(&format!("{:4}: {}\n", i + 1, line));
-            }
+            output.push_str(&add_line_numbers(content));
         } else {
             output.push_str(content);
             if !content.ends_with('\n') {
@@ -603,4 +610,49 @@ where
     }
 
     root.to_string("").trim_end().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::schema::{RepomixConfig, RepomixOutputStyle};
+    use serde_json::Value;
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    #[test]
+    fn json_output_respects_line_numbers_flag() {
+        let mut config = RepomixConfig::default();
+        config.output.style = RepomixOutputStyle::Json;
+        config.output.show_line_numbers = true;
+        config.output.file_summary = false;
+        config.output.directory_structure = false;
+        config.output.git.include_diffs = false;
+        config.output.git.include_logs = false;
+
+        let mut files = HashMap::new();
+        files.insert(
+            PathBuf::from("src/main.rs"),
+            "fn main() {\nprintln!(\"hi\");\n}".to_string(),
+        );
+        let sorted_paths = vec![PathBuf::from("src/main.rs")];
+        let ctx = FormatContext {
+            files: &files,
+            sorted_paths: &sorted_paths,
+            top_files: &[],
+            token_count_tree: None,
+            token_count: 0,
+            total_chars: files.values().map(|c| c.chars().count()).sum(),
+        };
+
+        let output = format(&config, ctx).unwrap().content;
+        let value: Value = serde_json::from_str(&output).unwrap();
+        let file_text = value["files"]["src/main.rs"]
+            .as_str()
+            .expect("file content should be string");
+
+        assert!(file_text.starts_with("   1: fn main() {"));
+        assert!(file_text.contains("\n   2: println!(\"hi\");\n"));
+        assert!(file_text.trim_end().ends_with("   3: }"));
+    }
 }

@@ -4,7 +4,13 @@ use crate::cli::Cli;
 
 pub fn init(args: &Cli) {
     // Use RUST_LOG environment variable if present, otherwise use args
-    let default_filter = if args.verbose { "debug" } else { "info" };
+    let default_filter = if args.quiet || args.stdout {
+        "error"
+    } else if args.verbose {
+        "debug"
+    } else {
+        "warn"
+    };
 
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter));

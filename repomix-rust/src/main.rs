@@ -8,14 +8,19 @@ use clap::Parser;
 use cli::Cli;
 use config::schema::TokenCountTreeConfig;
 use core::metrics::token_tree::render_token_tree;
+use rustc_version_runtime::version as rustc_version;
 use shared::logger;
-use std::path::Path;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logger
     // Parse CLI arguments
     let mut args = Cli::parse();
+
+    if args.version {
+        print_version_info();
+        return Ok(());
+    }
 
     if args.init {
         let cwd = std::env::current_dir().context("Failed to get current working directory")?;
@@ -41,6 +46,8 @@ async fn main() -> Result<()> {
     // Let's check shared::logger.
 
     logger::init(&args);
+    let suppress_human_output = args.quiet || args.stdout || args.stdin;
+    let show_human_output = !suppress_human_output;
 
     tracing::debug!("Repomix started with args: {:?}", args);
 
@@ -68,73 +75,75 @@ async fn main() -> Result<()> {
     }
 
     // Run packing
-    println!("\n📦 Repomix v{}\n", env!("CARGO_PKG_VERSION"));
+    if show_human_output {
+        println!("\n📦 Repomix v{}\n", env!("CARGO_PKG_VERSION"));
+    }
 
     let result = core::pack::pack(&config, &args.directories)?;
 
-    println!("✔ Packing completed successfully!\n");
+    if show_human_output {
+        println!("✔ Packing completed successfully!\n");
 
-    // Display top files
-    let top_files_len = config.output.top_files_length as usize;
-    if top_files_len > 0 && !result.top_files.is_empty() {
-        println!(
-            "📈 Top {} File{} by Token Count:",
-            top_files_len,
-            if top_files_len == 1 { "" } else { "s" }
-        );
-        println!("──────────────────────────────");
-        for (i, file_stat) in result.top_files.iter().enumerate() {
-            let percentage = if result.token_count > 0 {
-                (file_stat.token_count as f64 / result.token_count as f64 * 100.0).round()
-            } else {
-                0.0
-            };
+        // Display top files
+        let top_files_len = config.output.top_files_length as usize;
+        if top_files_len > 0 && !result.top_files.is_empty() {
             println!(
-                "{}. {} ({} tokens, {} chars, {}%)",
-                i + 1,
-                file_stat.path.display(),
-                format_number(file_stat.token_count),
-                format_number(file_stat.char_count),
-                percentage
+                "📈 Top {} File{} by Token Count:",
+                top_files_len,
+                if top_files_len == 1 { "" } else { "s" }
             );
-        }
-        println!();
-    }
-
-    if let Some(tree) = &result.token_count_tree {
-        if let Some(threshold) = token_tree_threshold(&config.output.token_count_tree) {
-            println!("🔢 Token Count Tree:");
-            println!("────────────────────");
-            if threshold > 0 {
-                println!("Showing entries with {}+ tokens:", threshold);
-            }
-            let lines = render_token_tree(tree, threshold);
-            if lines.is_empty() {
-                println!("No files found.");
-            } else {
-                for line in lines {
-                    println!("{line}");
-                }
+            println!("──────────────────────────────");
+            for (i, file_stat) in result.top_files.iter().enumerate() {
+                let percentage = if result.token_count > 0 {
+                    (file_stat.token_count as f64 / result.token_count as f64 * 100.0).round()
+                } else {
+                    0.0
+                };
+                println!(
+                    "{}. {} ({} tokens, {} chars, {}%)",
+                    i + 1,
+                    file_stat.path.display(),
+                    format_number(file_stat.token_count),
+                    format_number(file_stat.char_count),
+                    percentage
+                );
             }
             println!();
         }
-    }
 
-    // Security check
-    println!("🔎 Security Check:");
-    println!("──────────────────");
-    if result.has_secrets {
-        println!(
-            "⚠ {} suspicious file(s) detected and excluded:",
-            result.suspicious_files.len()
-        );
-        for file in &result.suspicious_files {
-            println!("  - {}", file.display());
+        if let Some(tree) = &result.token_count_tree {
+            if let Some(threshold) = token_tree_threshold(&config.output.token_count_tree) {
+                println!("🔢 Token Count Tree:");
+                println!("────────────────────");
+                if threshold > 0 {
+                    println!("Showing entries with {}+ tokens:", threshold);
+                }
+                let lines = render_token_tree(tree, threshold);
+                if lines.is_empty() {
+                    println!("No files found.");
+                } else {
+                    for line in lines {
+                        println!("{line}");
+                    }
+                }
+                println!();
+            }
         }
-    } else {
-        println!("✔ No suspicious files detected.");
-    }
-    println!("\n");
+
+        // Security check
+        println!("🔎 Security Check:");
+        println!("──────────────────");
+        if result.has_secrets {
+            println!("{} suspicious file(s) detected and excluded from the output:", result.suspicious_files.len());
+            for (idx, file) in result.suspicious_files.iter().enumerate() {
+                println!("{}. {}", idx + 1, file.display());
+            }
+            println!("These files have been excluded from the output for security reasons.");
+            println!("Please review these files for potential sensitive information.");
+        } else {
+            println!("✔ No suspicious files detected.");
+        }
+        println!("\n");
 
     // Print summary
     println!("📊 Pack Summary:");
@@ -145,54 +154,57 @@ async fn main() -> Result<()> {
         format_number(result.token_count)
     );
     println!("  Total Chars: {} chars", format_number(result.total_chars));
+    let output_target = if args.stdout {
+        "stdout".to_string()
+    } else if let Some(path) = &config.output.file_path {
+        path.clone()
+    } else {
+        "stdout".to_string()
+    };
+    println!("       Output: {}", output_target);
+    println!(
+        "     Security: {}",
+        if result.has_secrets {
+            format!(
+                "⚠ {} suspicious file(s) detected and excluded",
+                result.suspicious_files.len()
+            )
+        } else {
+            "✔ No suspicious files detected".to_string()
+        }
+    );
+    println!(
+        "    Git Diffs: {}",
+        if config.output.git.include_diffs {
+            "✔ Git diffs included"
+        } else {
+                "✖ Git diffs not included"
+            }
+        );
+        println!(
+            "     Git Logs: {}",
+            if config.output.git.include_logs {
+                "✔ Git logs included"
+            } else {
+                "✖ Git logs not included"
+            }
+        );
+    }
 
     // Handle output
     if args.stdout {
-        println!("       Output: stdout");
-        println!(
-            "     Security: {}",
-            if result.has_secrets {
-                format!(
-                    "⚠ {} suspicious file(s) detected and excluded",
-                    result.suspicious_files.len()
-                )
-            } else {
-                "✔ No suspicious files detected".to_string()
-            }
-        );
-        println!();
-        println!("{}", result.output);
+        print!("{}", result.output);
     } else if let Some(output_path) = &config.output.file_path {
         std::fs::write(output_path, &result.output)
             .with_context(|| format!("Failed to write output to {:?}", output_path))?;
-        println!("       Output: {}", Path::new(output_path).display());
-        println!(
-            "     Security: {}",
-            if result.has_secrets {
-                format!(
-                    "⚠ {} suspicious file(s) detected and excluded",
-                    result.suspicious_files.len()
-                )
-            } else {
-                "✔ No suspicious files detected".to_string()
-            }
-        );
-        println!();
+        if show_human_output {
+            println!();
+        }
     } else {
-        println!("       Output: stdout");
-        println!(
-            "     Security: {}",
-            if result.has_secrets {
-                format!(
-                    "⚠ {} suspicious file(s) detected and excluded",
-                    result.suspicious_files.len()
-                )
-            } else {
-                "✔ No suspicious files detected".to_string()
-            }
-        );
-        println!();
-        println!("{}", result.output);
+        if show_human_output {
+            println!();
+        }
+        print!("{}", result.output);
     }
 
     // Clipboard
@@ -201,13 +213,28 @@ async fn main() -> Result<()> {
         clipboard
             .set_text(&result.output)
             .context("Failed to copy to clipboard")?;
-        println!("📋 Output copied to clipboard");
+        if show_human_output {
+            println!("📋 Output copied to clipboard");
+        }
     }
 
-    println!("🎉 All Done!");
-    println!("Your repository has been successfully packed.\n");
+    if show_human_output {
+        println!("🎉 All Done!");
+        println!("Your repository has been successfully packed.\n");
+        println!("🚀 Repomix is now available in your browser! Try it at https://repomix.com");
+    }
 
     Ok(())
+}
+
+fn print_version_info() {
+    let pkg_version = env!("CARGO_PKG_VERSION");
+    let rustc_ver = rustc_version();
+    let platform = format!("{} {}", std::env::consts::OS, std::env::consts::ARCH);
+
+    println!("Repomix (Rust) v{}", pkg_version);
+    println!("Runtime: rustc {}", rustc_ver);
+    println!("Platform: {}", platform);
 }
 
 fn token_tree_threshold(config_value: &TokenCountTreeConfig) -> Option<usize> {

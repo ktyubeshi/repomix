@@ -48,6 +48,9 @@ regex = "1.10"
 lazy_static = "1.4"
 content_inspector = "0.2"
 once_cell = "1.19"
+chardetng = "0.1"
+encoding_rs = "0.8"
+rustc_version_runtime = "0.2"
 
 # Tree-sitter
 tree-sitter = "0.20"

@@ -3,7 +3,9 @@ use anyhow::{bail, Context, Result};
 mod binary_extensions;
 pub mod process;
 use self::binary_extensions::BINARY_EXTENSIONS;
+use chardetng::EncodingDetector;
 use content_inspector::{inspect, ContentType};
+use encoding_rs::Encoding;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use lazy_static::lazy_static;
@@ -408,13 +410,38 @@ pub fn read_file(path: &Path, config: &RepomixConfig) -> Result<Option<String>> 
         return Ok(None);
     }
 
-    match String::from_utf8(bytes) {
-        Ok(content) => Ok(Some(content)),
-        Err(err) => {
-            tracing::debug!("Skipping binary file {:?} (utf8 error: {})", path, err);
-            Ok(None)
-        }
+    let bytes = match String::from_utf8(bytes) {
+        Ok(content) => return Ok(Some(content)),
+        Err(err) => err.into_bytes(),
+    };
+
+    let (encoding, bom_length) =
+        Encoding::for_bom(&bytes).map_or_else(
+            || {
+                let mut detector = EncodingDetector::new();
+                detector.feed(&bytes, true);
+                (detector.guess(None, true), 0)
+            },
+            |(enc, len)| (enc, len),
+        );
+
+    let (decoded, had_errors) = encoding.decode_without_bom_handling(&bytes[bom_length..]);
+    if had_errors {
+        tracing::debug!(
+            "Decoding {:?} as {} had errors; continuing with replacement characters",
+            path,
+            encoding.name()
+        );
+    } else {
+        tracing::trace!(
+            "Decoded {:?} using {} encoding (bom offset: {})",
+            path,
+            encoding.name(),
+            bom_length
+        );
     }
+
+    Ok(Some(decoded.into_owned()))
 }
 
 pub fn read_stdin_file_paths(cwd: &Path) -> Result<Vec<PathBuf>> {
@@ -547,6 +574,21 @@ mod tests {
         let files = collect_relative_files(&walker, dir.path());
 
         assert!(files.is_empty());
+    }
+
+    #[test]
+    fn reads_non_utf8_text_files() {
+        let dir = tempdir().unwrap();
+        let path = dir.path().join("sjis.txt");
+        let original = "こんにちは";
+        let (encoded, _, _) = encoding_rs::SHIFT_JIS.encode(original);
+        fs::write(&path, encoded.into_owned()).unwrap();
+
+        let mut config = RepomixConfig::default();
+        config.cwd = dir.path().to_path_buf();
+        let content = read_file(&path, &config).unwrap();
+
+        assert_eq!(content, Some(original.to_string()));
     }
 
     fn collect_relative_files(walker: &FileWalker, root: &Path) -> Vec<String> {
