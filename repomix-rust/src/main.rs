@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
 
     // Run packing
     if show_human_output {
-        println!("\n📦 Repomix v{}\n", env!("CARGO_PKG_VERSION"));
+        println!("\n📦 Repomix-rs v{}\n", env!("CARGO_PKG_VERSION"));
     }
 
     let result = core::pack::pack(&config, &args.directories)?;
