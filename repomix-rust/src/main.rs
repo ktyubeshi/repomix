@@ -131,7 +131,7 @@ async fn main() -> Result<()> {
                 if threshold > 0 {
                     println!(
                         "{}",
-                        style(format!("Showing entries with {}+ tokens:", threshold)).dim()
+                        style(format!("Showing entries with {}+ tokens:", threshold)).white()
                     );
                 }
                 let lines = render_token_tree(tree, threshold);
@@ -139,7 +139,13 @@ async fn main() -> Result<()> {
                     println!("{}", style("No files found.").dim());
                 } else {
                     for line in lines {
-                        println!("{}", style(line).white());
+                        if let Some(split) = line.rfind(" (") {
+                            let (path_part, token_part) = line.split_at(split);
+                            print!("{}", style(path_part).white());
+                            println!("{}", style(token_part).dim());
+                        } else {
+                            println!("{}", style(line).white());
+                        }
                     }
                 }
                 println!();
