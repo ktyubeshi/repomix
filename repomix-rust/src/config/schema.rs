@@ -105,7 +105,7 @@ pub struct GitOutputConfig {
 impl Default for GitOutputConfig {
     fn default() -> Self {
         Self {
-            sort_by_changes: false,
+            sort_by_changes: true,
             sort_by_changes_max_commits: 100,
             include_diffs: false,
             include_logs: false,

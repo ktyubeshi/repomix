@@ -2,18 +2,40 @@
 
 use anyhow::{Result, bail};
 use std::path::PathBuf;
+use std::env;
 
 // Mimics Node.js getGlobalDirectory
+// Windows: %LOCALAPPDATA%\Repomix
+// Others: $XDG_CONFIG_HOME/repomix or ~/.config/repomix
 pub fn get_global_directory() -> Result<PathBuf> {
-    if let Some(mut home_dir) = dirs::home_dir() {
-        home_dir.push(".repomix");
-        Ok(home_dir)
-    } else {
-        bail!("Could not determine home directory to get global config path.");
+    #[cfg(target_os = "windows")]
+    {
+        // Try LOCALAPPDATA first, then fall back to home/AppData/Local
+        if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
+            return Ok(PathBuf::from(local_app_data).join("Repomix"));
+        }
+        
+        if let Some(home_dir) = dirs::home_dir() {
+            return Ok(home_dir.join("AppData").join("Local").join("Repomix"));
+        }
+        
+        bail!("Could not determine config directory on Windows (LOCALAPPDATA not set and home dir not found)");
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(xdg_config_home) = env::var("XDG_CONFIG_HOME") {
+            return Ok(PathBuf::from(xdg_config_home).join("repomix"));
+        }
+
+        if let Some(home_dir) = dirs::home_dir() {
+            return Ok(home_dir.join(".config").join("repomix"));
+        }
+
+        bail!("Could not determine config directory (XDG_CONFIG_HOME not set and home dir not found)");
     }
 }
 
-// TODO: Add tests for get_global_directory
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -21,8 +43,21 @@ mod tests {
     #[test]
     fn test_get_global_directory() {
         let global_dir = get_global_directory().unwrap();
-        // This test depends on the environment, so we can only assert basic properties
-        assert!(global_dir.starts_with(dirs::home_dir().unwrap()));
-        assert!(global_dir.ends_with(".repomix"));
+        
+        #[cfg(target_os = "windows")]
+        {
+             // Basic check for Windows pattern
+             assert!(global_dir.ends_with("Repomix"));
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            // Check for Unix pattern
+            assert!(global_dir.ends_with("repomix"));
+            // If XDG_CONFIG_HOME is not set (likely in test env), it should be in .config
+            if std::env::var("XDG_CONFIG_HOME").is_err() {
+                assert!(global_dir.to_string_lossy().contains(".config"));
+            }
+        }
     }
 }

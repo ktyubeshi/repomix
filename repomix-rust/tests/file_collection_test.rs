@@ -12,6 +12,20 @@ fn ensure_parent_exists(path: &Path) {
     }
 }
 
+fn has_file_ancestor(existing_files: &HashSet<String>, path: &Path) -> bool {
+    let mut cur = path;
+    while let Some(parent) = cur.parent() {
+        if parent.as_os_str().is_empty() {
+            break;
+        }
+        if existing_files.contains(&parent.to_string_lossy().to_string()) {
+            return true;
+        }
+        cur = parent;
+    }
+    false
+}
+
 // Run node repomix and extract file paths
 fn run_node_repomix_files(input_dir: &Path) -> HashSet<String> {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
@@ -142,14 +156,20 @@ proptest! {
         fs::create_dir(&input_dir).unwrap();
         
         // Setup files
+        let mut created_files: HashSet<String> = HashSet::new();
         for (path, content) in &files {
             // normalize path to prevent creation errors (e.g. ending with / or empty parts)
             if path.ends_with('/') || path.contains("//") { continue; }
             
             let full_path = input_dir.join(path);
+
+            if has_file_ancestor(&created_files, &full_path) {
+                continue;
+            }
+
             ensure_parent_exists(&full_path);
-            if let Err(_) = fs::write(&full_path, content) {
-                continue; // skip invalid paths generated
+            if fs::write(&full_path, content).is_ok() {
+                created_files.insert(path.replace('\\', "/"));
             }
         }
 
