@@ -123,6 +123,8 @@ impl Default for GitOutputConfig {
 pub struct OutputConfig {
     #[serde(rename = "filePath", default = "OutputConfig::default_file_path")]
     pub file_path: Option<String>,
+    #[serde(skip)]
+    pub file_path_explicit: bool,
     #[serde(default = "OutputConfig::default_style")]
     pub style: RepomixOutputStyle,
     #[serde(rename = "parsableStyle", default)]
@@ -172,6 +174,7 @@ impl Default for OutputConfig {
     fn default() -> Self {
         Self {
             file_path: Self::default_file_path(),
+            file_path_explicit: false,
             style: RepomixOutputStyle::default(),
             parsable_style: false,
             header_text: None,
@@ -206,6 +209,20 @@ impl OutputConfig {
     }
     fn default_style() -> RepomixOutputStyle {
         RepomixOutputStyle::default()
+    }
+
+    /// Aligns with the Node.js mergeConfigs behavior by filling filePath from style
+    /// when the path was not explicitly provided.
+    pub fn apply_default_file_path_for_style(&mut self) {
+        if self.file_path_explicit {
+            return;
+        }
+
+        if let Some(default_path) = default_file_path_map().get(&self.style) {
+            if self.file_path.as_deref() != Some(default_path.as_str()) {
+                self.file_path = Some(default_path.clone());
+            }
+        }
     }
 }
 
@@ -317,6 +334,7 @@ impl RepomixConfig {
         // Apply output overrides
         if let Some(file_path) = &cli.output_file {
             self.output.file_path = Some(file_path.clone());
+            self.output.file_path_explicit = true;
         }
         if let Some(style_cli) = cli.style {
             self.output.style = match style_cli {
@@ -502,6 +520,8 @@ impl RepomixConfig {
         }
 
         self.remote_branch = cli.remote_branch.clone();
+
+        self.output.apply_default_file_path_for_style();
 
         self
     }

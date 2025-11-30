@@ -4,6 +4,7 @@
 use super::global_directory;
 use crate::config::schema::RepomixConfig;
 use anyhow::{bail, Context, Result};
+use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -41,7 +42,16 @@ fn get_file_extension(file_path: &Path) -> Option<&str> {
     file_path.extension().and_then(|s| s.to_str())
 }
 
-async fn load_js_ts_config_with_subprocess(file_path: PathBuf) -> Result<RepomixConfig> {
+fn is_file_path_explicit(raw_config: &Value) -> bool {
+    raw_config
+        .get("output")
+        .and_then(|output| output.get("filePath"))
+        .and_then(|path| path.as_str())
+        .map(|path| !path.is_empty())
+        .unwrap_or(false)
+}
+
+async fn load_js_ts_config_with_subprocess(file_path: PathBuf) -> Result<Value> {
     debug!(
         "Attempting to load JS/TS config file {:?} via subprocess...",
         file_path
@@ -101,7 +111,7 @@ async fn load_js_ts_config_with_subprocess(file_path: PathBuf) -> Result<Repomix
 async fn load_and_validate_config(file_path: PathBuf) -> Result<RepomixConfig> {
     let ext = get_file_extension(&file_path);
 
-    let config: RepomixConfig = match ext {
+    let raw_config: Value = match ext {
         Some("json") | Some("json5") | Some("jsonc") => {
             let file_content = fs::read_to_string(&file_path).map_err(|e| {
                 anyhow::anyhow!("Failed to read config file {:?}: {}", file_path, e)
@@ -111,10 +121,22 @@ async fn load_and_validate_config(file_path: PathBuf) -> Result<RepomixConfig> {
             })?
         }
         Some("ts") | Some("mts") | Some("cts") | Some("js") | Some("mjs") | Some("cjs") => {
-            load_js_ts_config_with_subprocess(file_path).await?
+            load_js_ts_config_with_subprocess(file_path.clone()).await?
         }
         _ => bail!("Unsupported config file format: {:?}", file_path),
     };
+
+    let file_path_explicit = is_file_path_explicit(&raw_config);
+
+    let mut config: RepomixConfig = serde_json::from_value(raw_config).map_err(|e| {
+        anyhow::anyhow!(
+            "Failed to parse config file {:?} into RepomixConfig: {}",
+            file_path,
+            e
+        )
+    })?;
+
+    config.output.file_path_explicit = file_path_explicit;
 
     // TODO: Implement actual schema validation (similar to Zod). For now, serde will handle basic type checks.
     Ok(config)

@@ -2,7 +2,10 @@
 #[cfg(test)]
 mod tests {
     use crate::cli::Cli;
-    use crate::config::schema::{OutputConfig, RepomixConfig, TokenCountTreeConfig};
+    use crate::config::schema::{
+        default_file_path_map, OutputConfig, RepomixConfig, RepomixOutputStyle,
+        TokenCountTreeConfig,
+    };
     use clap::Parser;
     use proptest::prelude::*;
     use serde_json;
@@ -67,6 +70,15 @@ mod tests {
         config = config.merge_with_cli(&cli);
 
         assert_eq!(config.output.file_summary, false);
+    }
+
+    fn output_style_strategy() -> impl Strategy<Value = RepomixOutputStyle> {
+        prop_oneof![
+            Just(RepomixOutputStyle::Xml),
+            Just(RepomixOutputStyle::Markdown),
+            Just(RepomixOutputStyle::Json),
+            Just(RepomixOutputStyle::Plain),
+        ]
     }
 
     proptest! {
@@ -145,6 +157,53 @@ mod tests {
                     prop_assert_eq!(merged.output.token_count_tree, TokenCountTreeConfig::Bool(true));
                 }
             }
+        }
+
+        #[test]
+        fn merge_with_cli_sets_style_default_path_when_not_explicit(style in output_style_strategy()) {
+            let mut config = RepomixConfig::default();
+            config.output.style = style.clone();
+            config.output.file_path_explicit = false;
+
+            let cli = Cli::parse_from(&["repomix"]);
+            let merged = config.merge_with_cli(&cli);
+
+            let expected_path = default_file_path_map()
+                .get(&style)
+                .expect("default path should exist for all styles")
+                .clone();
+
+            prop_assert_eq!(merged.output.file_path, Some(expected_path));
+        }
+
+        #[test]
+        fn merge_with_cli_uses_cli_style_default_path_without_file_path(cli_style in output_style_strategy()) {
+            let cli = Cli::parse_from(&["repomix", &format!("--style={}", cli_style.to_string())]);
+            let merged = RepomixConfig::default().merge_with_cli(&cli);
+
+            let expected_path = default_file_path_map()
+                .get(&cli_style)
+                .expect("default path should exist for all styles")
+                .clone();
+
+            prop_assert_eq!(merged.output.file_path, Some(expected_path));
+        }
+
+        #[test]
+        fn merge_with_cli_keeps_explicit_file_path(
+            cli_style in output_style_strategy(),
+            path in proptest::string::string_regex("[A-Za-z0-9_/]{5,20}")
+                .unwrap()
+                .prop_map(|s| format!("{s}.txt"))
+        ) {
+            let mut config = RepomixConfig::default();
+            config.output.file_path = Some(path.clone());
+            config.output.file_path_explicit = true;
+
+            let cli = Cli::parse_from(&["repomix", &format!("--style={}", cli_style.to_string())]);
+            let merged = config.merge_with_cli(&cli);
+
+            prop_assert_eq!(merged.output.file_path, Some(path));
         }
     }
 }
