@@ -135,6 +135,7 @@ pub const BINARY_EXTENSIONS: &[&str] = &[
     "nef",
     "npx",
     "numbers",
+    "onnx",
     "nupkg",
     "o",
     "odp",

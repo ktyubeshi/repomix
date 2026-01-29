@@ -43,6 +43,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
     // Collect files
     let walker = file::FileWalker::new(config.clone())?;
     let files = std::sync::Mutex::new(HashMap::new());
+    let all_paths = std::sync::Mutex::new(Vec::new());
     let suspicious_files = std::sync::Mutex::new(Vec::new());
     let total_chars = std::sync::atomic::AtomicUsize::new(0);
     let file_stats = std::sync::Mutex::new(Vec::new());
@@ -50,6 +51,10 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
 
     // Use parallel walker for better performance (read -> check -> process -> count tokens)
     walker.walk_parallel(&target_paths, |absolute_path, relative_path| {
+        {
+            let mut list = all_paths.lock().unwrap();
+            list.push(relative_path.clone());
+        }
         match file::read_file(&absolute_path, config) {
             Ok(Some(content)) => {
                 tracing::debug!("Read file: {:?} (len: {})", absolute_path, content.len());
@@ -108,6 +113,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
 
     // Extract results from synchronisation primitives
     let files = files.into_inner().unwrap();
+    let mut all_paths = all_paths.into_inner().unwrap();
     let suspicious_files = suspicious_files.into_inner().unwrap();
     let files_total_chars = total_chars.into_inner();
     let mut file_stats = file_stats.into_inner().unwrap();
@@ -117,6 +123,9 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         files.len(),
         files_total_chars
     );
+
+    all_paths.sort();
+    all_paths.dedup();
 
     let mut sorted_paths: Vec<PathBuf> = files.keys().cloned().collect();
     let git_root = if config.cwd.as_os_str().is_empty() {
@@ -172,6 +181,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
         output::FormatContext {
             files: &files,
             sorted_paths: &sorted_paths,
+            tree_paths: &all_paths,
             top_files: &top_files,
             token_count_tree: token_tree.as_ref(),
             token_count: files_token_count,
@@ -196,6 +206,7 @@ pub fn pack(config: &RepomixConfig, paths: &[PathBuf]) -> Result<PackResult> {
             output::FormatContext {
                 files: &files,
                 sorted_paths: &sorted_paths,
+                tree_paths: &all_paths,
                 top_files: &top_files,
                 token_count_tree: token_tree.as_ref(),
                 token_count,

@@ -405,6 +405,11 @@ pub fn read_file(path: &Path, config: &RepomixConfig) -> Result<Option<String>> 
 
     let bytes = fs::read(path).with_context(|| format!("Failed to read file {:?}", path))?;
 
+    if bytes.contains(&0) {
+        tracing::debug!("Skipping binary file {:?} (NUL byte detected)", path);
+        return Ok(None);
+    }
+
     if inspect(&bytes) == ContentType::BINARY {
         tracing::debug!("Skipping binary file {:?} (content detection)", path);
         return Ok(None);
@@ -426,20 +431,21 @@ pub fn read_file(path: &Path, config: &RepomixConfig) -> Result<Option<String>> 
         );
 
     let (decoded, had_errors) = encoding.decode_without_bom_handling(&bytes[bom_length..]);
-    if had_errors {
+    if had_errors || decoded.contains('\u{FFFD}') {
         tracing::debug!(
-            "Decoding {:?} as {} had errors; continuing with replacement characters",
+            "Skipping file {:?} due to decoding errors (encoding: {})",
             path,
             encoding.name()
         );
-    } else {
-        tracing::trace!(
-            "Decoded {:?} using {} encoding (bom offset: {})",
-            path,
-            encoding.name(),
-            bom_length
-        );
+        return Ok(None);
     }
+
+    tracing::trace!(
+        "Decoded {:?} using {} encoding (bom offset: {})",
+        path,
+        encoding.name(),
+        bom_length
+    );
 
     Ok(Some(decoded.into_owned()))
 }

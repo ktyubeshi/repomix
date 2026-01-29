@@ -13,7 +13,7 @@ fn ensure_parent_exists(path: &Path) {
 
 fn run_node_repomix(input_dir: &Path, output_file: &Path) -> String {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
-    let bin_path = repo_root.join("bin/repomix.cjs");
+    let repo_root = repo_root.canonicalize().unwrap();
 
     // Use absolute paths for safety
     let input_abs = input_dir.canonicalize().unwrap();
@@ -31,14 +31,31 @@ fn run_node_repomix(input_dir: &Path, output_file: &Path) -> String {
         fs::create_dir_all(parent).unwrap();
     }
 
+    let script_path = output_abs.with_file_name("repomix-node-runner.mjs");
+    let script = r#"
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const repoRoot = path.resolve(process.argv[2]);
+const inputDir = path.resolve(process.argv[3]);
+const outputFile = path.resolve(process.argv[4]);
+
+const configModule = await import(pathToFileURL(path.join(repoRoot, 'lib', 'config', 'configLoad.js')).href);
+const packModule = await import(pathToFileURL(path.join(repoRoot, 'lib', 'core', 'packager.js')).href);
+
+const fileConfig = await configModule.loadFileConfig(repoRoot, null);
+const cliConfig = { output: { filePath: outputFile, style: 'xml' } };
+const config = configModule.mergeConfigs(repoRoot, fileConfig, cliConfig);
+
+await packModule.pack([inputDir], config, () => {});
+"#;
+    fs::write(&script_path, script).expect("Failed to write node runner script");
+
     let output = Command::new("node")
-        .arg(bin_path)
+        .arg(&script_path)
+        .arg(&repo_root)
         .arg(&input_abs)
-        .arg("--style")
-        .arg("xml")
-        .arg("--output")
         .arg(&output_abs)
-        // Add ignore to avoid including output files in each other if they are close (though here they are separate)
         .output()
         .expect("Failed to run node repomix");
 
@@ -50,7 +67,9 @@ fn run_node_repomix(input_dir: &Path, output_file: &Path) -> String {
         );
     }
 
-    fs::read_to_string(&output_abs).expect("Failed to read node output")
+    let content = fs::read_to_string(&output_abs).expect("Failed to read node output");
+    let _ = fs::remove_file(&script_path);
+    content
 }
 
 fn run_rust_repomix(input_dir: &Path, output_file: &Path) -> String {

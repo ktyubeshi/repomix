@@ -13,6 +13,7 @@ pub struct RepomixOutput {
 pub struct FormatContext<'a> {
     pub files: &'a HashMap<PathBuf, String>,
     pub sorted_paths: &'a [PathBuf],
+    pub tree_paths: &'a [PathBuf],
     pub top_files: &'a [FileStats],
     pub token_count_tree: Option<&'a TokenTreeNode>,
     pub token_count: usize,
@@ -83,7 +84,7 @@ fn format_xml_full(output: &mut String, ctx: &FormatContext, config: &RepomixCon
     // Directory Structure
     if config.output.directory_structure {
         output.push_str("<directory_structure>\n");
-        let structure = generate_directory_structure(ctx.sorted_paths.iter());
+        let structure = generate_directory_structure(ctx.tree_paths.iter());
         output.push_str(&structure);
         output.push_str("\n</directory_structure>\n\n");
     }
@@ -394,7 +395,7 @@ fn format_json(output: &mut String, ctx: &FormatContext, config: &RepomixConfig)
     if config.output.directory_structure {
         root.insert(
             "directoryStructure".to_string(),
-            json!(generate_directory_structure(ctx.sorted_paths.iter())),
+            json!(generate_directory_structure(ctx.tree_paths.iter())),
         );
     }
 
@@ -639,6 +640,7 @@ mod tests {
         let ctx = FormatContext {
             files: &files,
             sorted_paths: &sorted_paths,
+            tree_paths: &sorted_paths,
             top_files: &[],
             token_count_tree: None,
             token_count: 0,
